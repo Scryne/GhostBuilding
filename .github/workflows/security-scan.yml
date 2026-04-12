@@ -1,0 +1,74 @@
+name: Weekly Security Audit
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Every Monday at 03:00 AM UTC
+  workflow_dispatch: # Enable manual triggers
+
+jobs:
+  python-deps-audit:
+    name: Python Dependecy Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install pip-audit
+        run: pip install pip-audit
+        
+      - name: Scan requirements with pip-audit
+        run: |
+          cd backend
+          pip-audit -r requirements.txt
+
+  npm-deps-audit:
+    name: NPM Dependency Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Scan frontend dependencies
+        run: |
+          cd frontend
+          # Fails pipeline only if Critical vulnerabilites found
+          npm audit --audit-level=critical
+
+  container-security:
+    name: Trivy Container Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build local benchmark images
+        run: |
+          docker build -t ghostbuilding-backend:local ./backend
+          docker build -t ghostbuilding-frontend:local ./frontend
+          
+      - name: Run Trivy Scanner (Backend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghostbuilding-backend:local'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+          
+      - name: Run Trivy Scanner (Frontend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghostbuilding-frontend:local'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
