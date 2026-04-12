@@ -343,58 +343,83 @@ def scan_coordinate(
         _update_progress(task_id, 75, "Uydu görüntüsü alındı")
 
         # ============================================================
-        # %90 — Analiz motoru (placeholder — ileride implemente edilecek)
+        # %90 — AnomalyEngine: Tam analiz pipeline'ı
         # ============================================================
         _update_progress(task_id, 80, "Anomali analizi çalıştırılıyor")
 
         anomalies_detected: List[Dict[str, Any]] = []
 
         try:
-            # --- Basit heuristic anomali tespiti ---
-            # Gerçek analiz motoru (CV, diff, vb.) implemente edildiğinde
-            # burası değiştirilecek.
+            from app.services.anomaly_engine import AnomalyEngine
 
-            # Heuristic 1: Hassas yapıları anomali olarak işaretle
-            for b in buildings:
-                if b.is_sensitive:
-                    anomalies_detected.append({
-                        "type": "HIDDEN_STRUCTURE",
-                        "lat": b.centroid[0],
-                        "lng": b.centroid[1],
-                        "confidence": 65.0,
-                        "description": (
-                            f"Hassas yapı tespit edildi: "
-                            f"{b.building_type} — {b.name or 'İsimsiz'}"
-                        ),
-                        "osm_id": b.osm_id,
-                        "source_providers": list(tile_results.keys()) if tile_results else [],
-                    })
+            async def _run_analysis():
+                engine = AnomalyEngine(
+                    radius_m=int(radius_km * 1000),
+                    min_confidence=settings.ANOMALY_CONFIDENCE_THRESHOLD,
+                )
+                return await engine.analyze(lat, lng, zoom)
 
-            # Heuristic 2: Tile eksikliği — sağlayıcı farkı
-            if tile_results and len(tile_results) < 3:
-                anomalies_detected.append({
-                    "type": "IMAGE_DISCREPANCY",
-                    "lat": lat,
-                    "lng": lng,
-                    "confidence": 40.0,
-                    "description": (
-                        f"Bazı harita sağlayıcıları tile döndürmedi "
-                        f"(mevcut: {len(tile_results)}/4)"
-                    ),
-                    "source_providers": list(tile_results.keys()) if tile_results else [],
-                })
+            engine_candidates = _run_async(_run_analysis())
+
+            for candidate in engine_candidates:
+                anomalies_detected.append(candidate.to_dict())
 
             result["anomalies"] = anomalies_detected
 
             logger.info(
-                "[%s] Analiz tamamlandı: %d anomali tespit edildi",
+                "[%s] AnomalyEngine tamamlandı: %d anomali tespit edildi",
                 task_id,
                 len(anomalies_detected),
             )
 
         except Exception as exc:
-            logger.warning("[%s] Analiz hatası: %s", task_id, exc)
-            result["errors"].append(f"analysis: {str(exc)}")
+            logger.warning(
+                "[%s] AnomalyEngine hatası, fallback heuristic: %s",
+                task_id, exc,
+            )
+            result["errors"].append(f"engine: {str(exc)}")
+
+            # --- Fallback: basit heuristic anomali tespiti ---
+            try:
+                for b in buildings:
+                    if b.is_sensitive:
+                        anomalies_detected.append({
+                            "type": "HIDDEN_STRUCTURE",
+                            "lat": b.centroid[0],
+                            "lng": b.centroid[1],
+                            "confidence": 65.0,
+                            "description": (
+                                f"Hassas yapı tespit edildi: "
+                                f"{b.building_type} — {b.name or 'İsimsiz'}"
+                            ),
+                            "osm_id": b.osm_id,
+                            "source_providers": (
+                                list(tile_results.keys())
+                                if tile_results else []
+                            ),
+                        })
+
+                if tile_results and len(tile_results) < 3:
+                    anomalies_detected.append({
+                        "type": "IMAGE_DISCREPANCY",
+                        "lat": lat,
+                        "lng": lng,
+                        "confidence": 40.0,
+                        "description": (
+                            f"Bazı harita sağlayıcıları tile döndürmedi "
+                            f"(mevcut: {len(tile_results)}/4)"
+                        ),
+                        "source_providers": (
+                            list(tile_results.keys())
+                            if tile_results else []
+                        ),
+                    })
+
+                result["anomalies"] = anomalies_detected
+
+            except Exception as fb_exc:
+                logger.error("[%s] Fallback heuristic hatası: %s", task_id, fb_exc)
+                result["errors"].append(f"fallback: {str(fb_exc)}")
 
         _update_progress(task_id, 90, "Analiz tamamlandı")
 

@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+dist/
 .env
 .venv
 env/
@@ -21,3 +23,13 @@ build/
 
 # Docker
 docker-compose.override.yml
+
+# Runtime / Data
+data/
+celerybeat-schedule
+celerybeat-schedule.db
+*.log
+
+# Model weights (download at runtime)
+*.pt
+*.onnx
