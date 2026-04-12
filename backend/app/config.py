@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     SENTINEL_HUB_CLIENT_SECRET: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
 
+    # STORAGE Configuration (MinIO / Local)
+    MINIO_ENDPOINT: str = "minio:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_SECURE: bool = False
+    MINIO_BUCKET: str = "satellite-images"
+    STORAGE_ROOT: str = "data"
+
     # RATE LIMITING Configuration
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_SCAN_PER_HOUR: int = 10
