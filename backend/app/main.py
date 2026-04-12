@@ -7,7 +7,7 @@ import redis.asyncio as redis
 # Import configs and DB settings
 from app.config import settings
 from app.db.session import engine
-from app.routers import map_routes
+from app.routers import map_routes, anomalies, auth, verifications
 
 # Configure basic logging level
 logging.basicConfig(level=logging.INFO if not settings.DEBUG else logging.DEBUG)
@@ -59,7 +59,10 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_tags=[
         {"name": "system", "description": "System health and status endpoints."},
+        {"name": "auth", "description": "Authentication, authorization and user management."},
         {"name": "maps", "description": "Map intel operations and OSINT analytics."},
+        {"name": "anomalies", "description": "Anomaly detection, scanning, comparison and statistics."},
+        {"name": "verifications", "description": "Community verification voting and trust scoring."},
     ]
 )
 
@@ -89,7 +92,10 @@ async def health_check():
     }
 
 # Include nested domain routers to v1 Router
+api_v1_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_v1_router.include_router(map_routes.router, prefix="/maps", tags=["maps"])
+api_v1_router.include_router(anomalies.router, prefix="/anomalies", tags=["anomalies"])
+api_v1_router.include_router(verifications.router, prefix="/anomalies", tags=["verifications"])
 
 # Finalize the inclusion into the main app object
 app.include_router(api_v1_router)
