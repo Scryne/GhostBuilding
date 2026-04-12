@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import Map, { NavigationControl, Marker } from 'react-map-gl';
+
+import Map, { NavigationControl, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibregl from 'maplibre-gl';
 
@@ -9,6 +9,7 @@ export default function AppMap() {
   return (
     <div className="w-full h-full relative bg-gray-900 border border-white/10 rounded-xl overflow-hidden shadow-[0_0_40px_rgba(99,102,241,0.15)] ring-1 ring-white/10">
       <Map
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mapLib={maplibregl as any}
         initialViewState={{
           longitude: 35.0,
