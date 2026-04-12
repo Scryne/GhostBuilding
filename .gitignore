@@ -1,35 +1,51 @@
-# Python
+# ── Python ─────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
 dist/
-.env
-.venv
-env/
+.venv/
 venv/
+env/
 ENV/
+.pytest_cache/
 
-# Node
+# ── Environment ────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Node ───────────────────────────────────────────────────────────────────
 node_modules/
 .next/
 out/
 build/
 .DS_Store
+tsconfig.tsbuildinfo
 
-# IDE
+# ── IDE ────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Docker
+# ── Docker ─────────────────────────────────────────────────────────────────
 docker-compose.override.yml
 
-# Runtime / Data
+# ── Runtime / Data ─────────────────────────────────────────────────────────
 data/
 celerybeat-schedule
 celerybeat-schedule.db
+celerybeat-schedule.dir
+celerybeat-schedule.bak
 *.log
 
-# Model weights (download at runtime)
+# ── Model Weights (download at runtime) ────────────────────────────────────
 *.pt
 *.onnx
+
+# ── OS Generated ──────────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+.DS_Store

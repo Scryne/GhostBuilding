@@ -1,123 +1,247 @@
-import Map from '@/components/Map';
-import { Layers, Activity, Search, ShieldAlert } from 'lucide-react';
 
-export const metadata = {
-  title: 'GhostBuilding | OSINT Mapping Intelligence',
-  description: 'Identify discrepancies between mapping providers worldwide dynamically with GhostBuilding.',
-};
 
-export default function Home() {
+/**
+ * Ana sayfa — harita sayfasına yönlendirir.
+ *
+ * Şu an için tek sayfa "/" → harita olduğu için
+ * doğrudan harita bileşenini render eder.
+ * İleride /map route'u eklendiğinde redirect kullanılır.
+ */
+export default function HomePage() {
+  // İleride: redirect("/map");
+  // Şimdilik: harita ana sayfada render edilir
+  return <MapPage />;
+}
+
+// ── Inline Map Page (ileride /map route'a taşınacak) ──────────────────────
+
+import dynamic from "next/dynamic";
+import {
+  ShieldAlert,
+  Layers,
+  Activity,
+  Search,
+  Radar,
+  MapPin,
+
+  Crosshair,
+} from "lucide-react";
+
+const Map = dynamic(() => import("@/components/Map"), {
+  ssr: false,
+  loading: () => (
+    <div className="absolute inset-0 bg-background flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-12 w-12 rounded-full border-3 border-secondary/20 border-t-secondary animate-spin" />
+        <span className="text-sm text-muted-foreground animate-pulse">
+          Harita yükleniyor...
+        </span>
+      </div>
+    </div>
+  ),
+});
+
+function MapPage() {
   return (
-    <main className="flex min-h-screen flex-col bg-[#050505] text-white font-sans selection:bg-indigo-500/30">
-      {/* Navbar */}
-      <header className="flex items-center justify-between px-8 py-4 border-b border-white/5 bg-black/40 backdrop-blur-xl sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
-            <ShieldAlert className="w-6 h-6 text-indigo-400" />
+    <main className="relative w-screen h-screen overflow-hidden bg-background">
+      {/* ── Tam Ekran Harita ────────────────────────────────────────── */}
+      <div className="absolute inset-0 z-0">
+        <Map />
+      </div>
+
+      {/* ── Harita Vignette Efekti ──────────────────────────────────── */}
+      <div className="absolute inset-0 pointer-events-none z-[1] shadow-[inset_0_0_120px_rgba(0,0,0,0.7)]" />
+
+      {/* ── Üst Navbar — Float ──────────────────────────────────────── */}
+      <header className="map-overlay map-overlay-top w-auto max-w-3xl z-30">
+        <div className="glass-panel px-5 py-3 flex items-center gap-4">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 mr-2">
+            <div className="p-1.5 bg-secondary/10 rounded-lg border border-secondary/20">
+              <ShieldAlert className="w-5 h-5 text-secondary" />
+            </div>
+            <h1 className="text-base font-bold text-gradient-brand tracking-tight whitespace-nowrap">
+              GhostBuilding
+            </h1>
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent tracking-tight">
-            GhostBuilding
-          </h1>
+
+          {/* Arama */}
+          <div className="flex items-center gap-2 flex-1 min-w-[260px] bg-black/30 rounded-xl px-3 py-1.5 border border-white/5 focus-within:border-secondary/40 focus-within:ring-1 focus-within:ring-secondary/30 transition-all">
+            <Search className="w-4 h-4 text-gray-500" />
+            <input
+              id="search-input"
+              type="text"
+              placeholder="Koordinat, bölge veya anomali ara..."
+              className="bg-transparent border-none outline-none text-sm text-gray-200 w-full placeholder:text-gray-600"
+            />
+          </div>
+
+          {/* Durum */}
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-lg border border-emerald-400/15 whitespace-nowrap">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Canlı
+          </div>
         </div>
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
-          <a href="#" className="text-white relative after:content-[''] after:absolute after:-bottom-5 after:left-0 after:w-full after:h-[2px] after:bg-indigo-500 hover:text-white transition-colors">Dashboard</a>
-          <a href="#" className="hover:text-white transition-colors">OSINT Toolkit</a>
-          <a href="#" className="hover:text-white transition-colors">Detections</a>
-          <div className="px-5 py-2.5 bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 rounded-full hover:bg-indigo-500/20 hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] transition-all cursor-pointer font-semibold tracking-wide">
-            Access Intel
-          </div>
-        </nav>
       </header>
 
-      <div className="flex flex-1 overflow-hidden p-6 gap-6 h-[calc(100vh-80px)]">
-        {/* Sidebar */}
-        <aside className="w-[340px] flex flex-col gap-6 h-full">
-          {/* Map Layers */}
-          <div className="bg-black/40 border border-white/5 rounded-2xl p-5 backdrop-blur-md shadow-xl flex-shrink-0">
-            <h2 className="text-sm font-bold tracking-wider uppercase mb-5 text-gray-500 flex items-center gap-2">
-              <Layers className="w-4 h-4" /> Data Sources
-            </h2>
-            <div className="space-y-3">
-              {[
-                { name: 'Google Maps', color: 'bg-blue-500' },
-                { name: 'OpenStreetMap', color: 'bg-green-500' },
-                { name: 'Bing Maps', color: 'bg-teal-500' },
-                { name: 'Yandex Maps', color: 'bg-red-500' }
-              ].map((provider) => (
-                <label key={provider.name} className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-all border border-transparent hover:border-white/10 group">
-                  <div className="flex items-center gap-3">
-                    <input type="checkbox" className="peer sr-only" defaultChecked />
-                    <div className="w-5 h-5 rounded border border-gray-600 bg-black/50 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 flex items-center justify-center transition-colors">
-                      <svg className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+      {/* ── Sol Sidebar — Float ─────────────────────────────────────── */}
+      <aside className="map-overlay map-overlay-left z-20 flex flex-col gap-3 pt-16">
+        {/* Veri Kaynakları */}
+        <div className="glass-panel p-4">
+          <h2 className="text-[11px] font-bold tracking-widest uppercase mb-3 text-gray-500 flex items-center gap-2">
+            <Layers className="w-3.5 h-3.5" /> Veri Kaynakları
+          </h2>
+          <div className="space-y-2">
+            {[
+              { name: "Google Maps", color: "bg-blue-400", active: true },
+              { name: "OpenStreetMap", color: "bg-emerald-400", active: true },
+              { name: "Bing Maps", color: "bg-cyan-400", active: false },
+              { name: "Yandex Maps", color: "bg-red-400", active: false },
+            ].map((provider) => (
+              <label
+                key={provider.name}
+                className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] cursor-pointer transition-all border border-transparent hover:border-white/[0.06] group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-colors ${
+                      provider.active
+                        ? "border-secondary bg-secondary"
+                        : "border-gray-600 bg-transparent"
+                    }`}
+                  >
+                    {provider.active && (
+                      <svg
+                        className="w-2.5 h-2.5 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={3}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
-                    </div>
-                    <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">{provider.name}</span>
+                    )}
                   </div>
-                  <div className={`w-2 h-2 rounded-full ${provider.color} shadow-[0_0_8px_currentColor]`} />
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Real-time Activity */}
-          <div className="bg-black/40 border border-white/5 rounded-2xl p-5 backdrop-blur-md shadow-xl flex-1 overflow-hidden flex flex-col">
-            <h2 className="text-sm font-bold tracking-wider uppercase mb-5 text-gray-500 flex items-center gap-2">
-              <Activity className="w-4 h-4" /> Intel Feed
-            </h2>
-            <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1 relative">
-              <div className="absolute left-[15px] top-4 bottom-4 w-px bg-white/10" />
-              {[
-                { id: 1, loc: "Restricted Area B", diff: "Missing in Google Maps", time: "2m ago", status: "critical" },
-                { id: 2, loc: "Sector 7G Geometry", diff: "Resolution disparity detected", time: "45m ago", status: "warning" },
-                { id: 3, loc: "Unknown Facility", diff: "Present only in local registry", time: "3h ago", status: "info" },
-                { id: 4, loc: "Censorship Overlay", diff: "Pixelation filter bypass", time: "5h ago", status: "critical" },
-              ].map((item) => (
-                <div key={item.id} className="relative pl-10 group cursor-pointer">
-                  <div className={`absolute left-[11px] top-1.5 w-2 h-2 rounded-full ring-4 ring-black/50 
-                    ${item.status === 'critical' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 
-                      item.status === 'warning' ? 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)]' : 
-                      'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]'}`} />
-                  <div className="p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all hover:border-white/10">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-sm font-semibold text-gray-200 group-hover:text-indigo-300 transition-colors">{item.loc}</h3>
-                      <span className="text-[10px] uppercase text-gray-500 font-bold bg-black/40 px-2 py-0.5 rounded-full">{item.time}</span>
-                    </div>
-                    <p className="text-xs text-gray-400 leading-relaxed">{item.diff}</p>
-                  </div>
+                  <span className="text-xs font-medium text-gray-400 group-hover:text-gray-200 transition-colors">
+                    {provider.name}
+                  </span>
                 </div>
-              ))}
-            </div>
+                <div
+                  className={`w-1.5 h-1.5 rounded-full ${provider.color} ${
+                    provider.active ? "opacity-100" : "opacity-30"
+                  }`}
+                />
+              </label>
+            ))}
           </div>
-        </aside>
+        </div>
 
-        {/* Main Interface */}
-        <section className="flex-1 flex flex-col gap-5 min-w-0">
-          {/* Top Bar */}
-          <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-2xl px-5 py-3.5 backdrop-blur-md shadow-xl">
-            <div className="flex items-center gap-3 w-[45%] bg-black/50 rounded-xl px-4 py-2 border border-white/5 focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
-              <Search className="w-5 h-5 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Analyze intelligence coordinates, areas, or anomalies..." 
-                className="bg-transparent border-none outline-none text-sm text-gray-200 w-full placeholder:text-gray-600"
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-xs font-semibold text-teal-400 bg-teal-400/10 px-4 py-2 rounded-xl border border-teal-400/20 shadow-[0_0_15px_rgba(45,212,191,0.1)]">
-                <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-                Live Synchronization
+        {/* İstihbarat Akışı */}
+        <div className="glass-panel p-4 flex-1 overflow-hidden flex flex-col min-h-0">
+          <h2 className="text-[11px] font-bold tracking-widest uppercase mb-3 text-gray-500 flex items-center gap-2">
+            <Activity className="w-3.5 h-3.5" /> İstihbarat Akışı
+          </h2>
+          <div className="space-y-2 overflow-y-auto flex-1 pr-1 thin-scrollbar">
+            {[
+              {
+                loc: "Kısıtlı Bölge B",
+                diff: "Google Maps'te eksik yapı",
+                time: "2 dk",
+                status: "critical" as const,
+              },
+              {
+                loc: "Sektör 7G",
+                diff: "Çözünürlük uyumsuzluğu",
+                time: "45 dk",
+                status: "warning" as const,
+              },
+              {
+                loc: "Bilinmeyen Tesis",
+                diff: "Sadece yerel kayıtta mevcut",
+                time: "3 sa",
+                status: "info" as const,
+              },
+              {
+                loc: "Sansür Katmanı",
+                diff: "Pikselleştirme atlatma",
+                time: "5 sa",
+                status: "critical" as const,
+              },
+            ].map((item, i) => (
+              <div
+                key={i}
+                className="group cursor-pointer p-3 rounded-xl border border-white/[0.04] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.08] transition-all"
+              >
+                <div className="flex justify-between items-start gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                        item.status === "critical"
+                          ? "bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.6)]"
+                          : item.status === "warning"
+                          ? "bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.6)]"
+                          : "bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.6)]"
+                      }`}
+                    />
+                    <h3 className="text-xs font-semibold text-gray-300 group-hover:text-white transition-colors">
+                      {item.loc}
+                    </h3>
+                  </div>
+                  <span className="text-[9px] uppercase text-gray-600 font-bold bg-black/30 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                    {item.time}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500 leading-relaxed pl-3.5">
+                  {item.diff}
+                </p>
               </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Sağ Alt — Hızlı Eylemler ───────────────────────────────── */}
+      <div className="map-overlay z-20 right-4 bottom-6 flex flex-col gap-2">
+        <button
+          id="btn-scan"
+          className="glass-panel p-3 hover:bg-secondary/10 transition-colors group"
+          title="Tarama Başlat"
+        >
+          <Radar className="w-5 h-5 text-secondary group-hover:text-secondary-300 transition-colors" />
+        </button>
+        <button
+          id="btn-locate"
+          className="glass-panel p-3 hover:bg-white/5 transition-colors group"
+          title="Konumuma Git"
+        >
+          <Crosshair className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+        </button>
+      </div>
+
+      {/* ── Alt Bar — Özet İstatistik ───────────────────────────────── */}
+      <div className="map-overlay map-overlay-bottom z-20">
+        <div className="glass-panel px-5 py-2.5 flex items-center gap-6">
+          {[
+            { label: "Toplam Anomali", value: "1,247", icon: MapPin },
+            { label: "Aktif Tarama", value: "3", icon: Radar },
+            { label: "Doğrulanmış", value: "523", icon: ShieldAlert },
+          ].map((stat, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <stat.icon className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-[11px] text-gray-500">{stat.label}</span>
+              <span className="text-xs font-bold text-gray-200">
+                {stat.value}
+              </span>
+              {i < 2 && (
+                <div className="w-px h-3 bg-white/[0.06] ml-4" />
+              )}
             </div>
-          </div>
-          
-          {/* Map Workspace */}
-          <div className="flex-1 rounded-2xl overflow-hidden relative shadow-2xl bg-black">
-            <Map />
-            {/* Elegant vignette */}
-            <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] z-10" />
-          </div>
-        </section>
+          ))}
+        </div>
       </div>
     </main>
   );

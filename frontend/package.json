@@ -9,12 +9,19 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "axios": "^1.15.0",
+    "jwt-decode": "^4.0.0",
     "lucide-react": "^1.8.0",
     "maplibre-gl": "^5.22.0",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
-    "react-map-gl": "^8.1.1"
+    "react-hook-form": "^7.72.1",
+    "react-hot-toast": "^2.6.0",
+    "react-map-gl": "^8.1.1",
+    "swr": "^2.4.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^20",

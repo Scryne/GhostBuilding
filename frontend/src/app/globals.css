@@ -2,44 +2,479 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   GhostBuilding — Global Styles
+   Koyu tema zorunlu. Harita üstünde float eden sidebar ve overlay'ler.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @layer base {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 5, 5, 5;
-    --background-end-rgb: 10, 10, 10;
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: #0A0E1A;
+    color: #F9FAFB;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    min-height: 100vh;
+    overflow: hidden; /* harita tam ekran */
+    /* Subtle noise texture for premium feel */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.015'/%3E%3C/svg%3E"),
+      linear-gradient(180deg, #0A0E1A 0%, #080C16 100%);
+  }
+
+  /* Selection */
+  ::selection {
+    background: rgba(46, 109, 164, 0.35);
+    color: #F9FAFB;
+  }
+
+  /* Focus visible global */
+  :focus-visible {
+    outline: 2px solid rgba(46, 109, 164, 0.5);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+/* ── Scrollbar — Koyu tema uyumlu ────────────────────────────────────────── */
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar,
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb,
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(46, 109, 164, 0.4);
+  }
+
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ── Glass Panel — Sidebar ve Overlay için ───────────────────────────────── */
+
+@layer components {
+  .glass-panel {
+    background: rgba(17, 24, 39, 0.85);
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
+    box-shadow:
+      0 4px 24px -4px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(255, 255, 255, 0.03);
+  }
+
+  .glass-panel-strong {
+    background: rgba(17, 24, 39, 0.92);
+    backdrop-filter: blur(24px) saturate(1.8);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    box-shadow:
+      0 8px 32px -8px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+
+  /* Float overlay — harita üstünde */
+  .map-overlay {
+    position: absolute;
+    z-index: 20;
+    pointer-events: auto;
+  }
+
+  .map-overlay-left {
+    left: 1rem;
+    top: 1rem;
+    bottom: 1rem;
+    width: 340px;
+  }
+
+  .map-overlay-right {
+    right: 1rem;
+    top: 1rem;
+    bottom: 1rem;
+    width: 380px;
+  }
+
+  .map-overlay-top {
+    left: 50%;
+    top: 1rem;
+    transform: translateX(-50%);
+  }
+
+  .map-overlay-bottom {
+    left: 50%;
+    bottom: 1.5rem;
+    transform: translateX(-50%);
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 4px;
+/* ── Glow Efektleri ──────────────────────────────────────────────────────── */
+
+@layer utilities {
+  .glow-border {
+    position: relative;
+  }
+
+  .glow-border::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      rgba(46, 109, 164, 0.3),
+      rgba(244, 162, 97, 0.15),
+      rgba(46, 109, 164, 0.1)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .text-gradient-brand {
+    background: linear-gradient(
+      135deg,
+      #2E6DA4 0%,
+      #457B9D 50%,
+      #F4A261 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+/* ── MapLibre Overrides ──────────────────────────────────────────────────── */
+
+.maplibregl-map {
+  font-family: inherit;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
+.maplibregl-ctrl-attrib {
+  background: rgba(10, 14, 26, 0.7) !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  font-size: 10px !important;
+  border-top-left-radius: 4px !important;
 }
 
-.custom-scrollbar::-webkit-scrollbar {
+.maplibregl-ctrl-attrib a {
+  color: rgba(46, 109, 164, 0.6) !important;
+}
+
+.maplibregl-ctrl-group {
+  background: rgba(17, 24, 39, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.maplibregl-ctrl-group button {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background-color: rgba(46, 109, 164, 0.15) !important;
+}
+
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) brightness(0.7);
+}
+
+/* ── Anomali Marker ──────────────────────────────────────────────────────── */
+
+.anomaly-marker {
+  cursor: pointer;
+  transition: transform 0.2s ease-out;
+}
+
+.anomaly-marker:hover {
+  transform: scale(1.15);
+  z-index: 10;
+}
+
+.anomaly-pulse {
+  animation: anomalyPulse 2s infinite;
+}
+
+@keyframes anomalyPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 8px currentColor;
+    opacity: 0;
+  }
+}
+
+/* ── MapLibre Popup / Tooltip ────────────────────────────────────────────── */
+
+.anomaly-tooltip .maplibregl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+}
+
+.anomaly-tooltip .maplibregl-popup-tip {
+  border-top-color: #111827 !important;
+}
+
+.anomaly-tooltip .maplibregl-popup-close-button {
+  display: none;
+}
+
+/* ── Anomali Detay Paneli ────────────────────────────────────────────── */
+
+#anomaly-detail-panel {
+  scrollbar-gutter: stable;
+}
+
+#anomaly-detail-panel::-webkit-scrollbar {
   width: 4px;
+}
+
+/* Before/After slider tutamak */
+#provider-comparison-slider {
+  touch-action: none;
+  user-select: none;
+}
+
+/* Canvas grafik yumuşak kenarlar */
+#timeline-chart-canvas {
+  image-rendering: auto;
+}
+
+/* Oy butonları — tıklama animasyonu */
+[id^="vote-btn-"]:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* ── Range Slider — Filtre paneli güven skoru ───────────────────────────── */
+
+.range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #2E6DA4;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+  box-shadow: 0 0 0 0 rgba(46, 109, 164, 0);
+}
+
+.range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(46, 109, 164, 0.4);
+}
+
+.range-slider::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 4px rgba(46, 109, 164, 0.15);
+}
+
+.range-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #2E6DA4;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+
+.range-slider::-moz-range-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+}
+
+/* ── Slide-in Left — Mobil filtre ortaya çıkışı ─────────────────────────── */
+
+@keyframes slideInLeft {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+/* ── Premium Ambient Glow Orbs ──────────────────────────────────────────── */
+
+@keyframes ambientFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.04; }
+  25% { transform: translate(30px, -20px) scale(1.1); opacity: 0.06; }
+  50% { transform: translate(-10px, 20px) scale(0.95); opacity: 0.03; }
+  75% { transform: translate(-30px, -10px) scale(1.05); opacity: 0.05; }
+}
+
+.ambient-orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(80px);
+  animation: ambientFloat 20s ease-in-out infinite;
+  z-index: 0;
+}
+
+/* ── Skeleton Loading Shimmer ───────────────────────────────────────────── */
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Smooth Page Transitions ────────────────────────────────────────────── */
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: pageEnter 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ── Confidence Score Ring Animation ────────────────────────────────────── */
+
+@keyframes scoreReveal {
+  from { stroke-dashoffset: 283; }
+}
+
+.score-ring {
+  animation: scoreReveal 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ── Interactive Card Hover Effect ──────────────────────────────────────── */
+
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px -8px rgba(46, 109, 164, 0.15),
+              0 0 0 1px rgba(46, 109, 164, 0.08);
+}
+
+/* ── Gradient Text Utility ──────────────────────────────────────────────── */
+
+.text-gradient-subtle {
+  background: linear-gradient(
+    135deg,
+    rgba(249, 250, 251, 0.95) 0%,
+    rgba(156, 163, 175, 0.8) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Stat Number Animation ──────────────────────────────────────────────── */
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+.stat-number {
+  animation: countUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ── Tooltip Styles ─────────────────────────────────────────────────────── */
+
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #F9FAFB;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 50;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-8px);
 }
