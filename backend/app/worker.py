@@ -1,16 +1,17 @@
-from celery import Celery
-from app.config import settings
+"""
+worker.py — Celery app backward-compat re-export.
 
-celery_app = Celery(
-    "ghostbuilding_worker",
-    broker=settings.REDIS_URL,
-    backend=settings.REDIS_URL
-)
+Eski import yolunu koruyor: celery_app.tasks.celery_app'a yönlendirir.
+Docker Compose komutlarında bu modül referans edilebilir.
 
-celery_app.conf.task_routes = {
-    "app.worker.*": "main-queue"
-}
+Kullanım:
+    celery -A app.worker.celery_app worker --loglevel=info
+    celery -A app.worker.celery_app beat --loglevel=info
+"""
 
-@celery_app.task
-def sample_task(task_name: str):
-    return f"Task {task_name} processed"
+# Yeni modülden re-export
+from app.tasks.celery_app import celery_app  # noqa: F401
+
+# Görev modüllerini import et (keşif için)
+import app.tasks.scan_tasks  # noqa: F401
+import app.tasks.maintenance_tasks  # noqa: F401
