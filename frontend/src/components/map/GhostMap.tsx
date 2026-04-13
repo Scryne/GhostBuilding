@@ -202,6 +202,7 @@ export default function GhostMap({ children }: GhostMapProps) {
           attributionControl={false}
           maxZoom={19}
           minZoom={2}
+          maxTileCacheSize={500}
           style={{ width: "100%", height: "100%" }}
         >
           {/* Zoom Kontrolleri — sağ üst */}

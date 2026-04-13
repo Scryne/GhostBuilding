@@ -20,32 +20,49 @@ const jetbrainsMono = JetBrains_Mono({
 // ── Metadata ──────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://ghostbuilding.dev"),
   title: {
-    default: "GhostBuilding — OSINT Mapping Intelligence",
-    template: "%s | GhostBuilding",
+    default: "GhostBuilding — Global Map Intelligence",
+    template: "%s | GhostBuilding — Global Map Intelligence",
   },
   description:
-    "Uydu ve harita sağlayıcıları arasındaki farklılıkları tespit eden açık kaynak istihbarat platformu. Hayalet yapılar, sansürlü alanlar ve gizli yapıları ortaya çıkarın.",
+    "Discover censored areas, hidden structures and map anomalies worldwide.",
   keywords: [
     "OSINT",
-    "ghost building",
+    "map anomalies",
+    "censored maps",
+    "hidden buildings",
     "satellite intelligence",
-    "map discrepancy",
-    "geospatial analysis",
-    "censorship detection",
   ],
   authors: [{ name: "GhostBuilding Team" }],
   openGraph: {
     type: "website",
-    locale: "tr_TR",
+    locale: "en_US",
     siteName: "GhostBuilding",
-    title: "GhostBuilding — OSINT Mapping Intelligence",
+    title: "GhostBuilding — Global Map Intelligence",
     description:
-      "Harita sağlayıcıları arasındaki anomalileri tespit eden istihbarat platformu.",
+      "Discover censored areas, hidden structures and map anomalies worldwide.",
+    images: [
+      {
+        url: "/api/og", // Fallback OG Image
+        width: 1200,
+        height: 630,
+        alt: "GhostBuilding OG Image",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GhostBuilding — Global Map Intelligence",
+    description:
+      "Discover censored areas, hidden structures and map anomalies worldwide.",
   },
   robots: {
     index: true,
     follow: true,
+  },
+  alternates: {
+    canonical: "/",
   },
 };
 
@@ -57,13 +74,29 @@ export const viewport: Viewport = {
 
 // ── Root Layout ───────────────────────────────────────────────────────────
 
+// Organization Schema (JSON-LD)
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "GhostBuilding",
+  url: "https://ghostbuilding.dev",
+  logo: "https://ghostbuilding.dev/logo.png",
+  description: "Global Map Intelligence & OSINT platform for identifying geographic manipulation.",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" className="dark" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+      </head>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased bg-background text-foreground`}
       >

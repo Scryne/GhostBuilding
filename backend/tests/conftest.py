@@ -22,7 +22,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import Column, String, Float, Text, Integer, Boolean, DateTime, event
+from sqlalchemy import Column, String, Float, Text, Integer, Boolean, DateTime, event, ForeignKey
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import (
@@ -96,7 +96,7 @@ class TestAnomalyImage(TestBase):
     __tablename__ = "anomaly_images"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    anomaly_id = Column(String, nullable=False)
+    anomaly_id = Column(String, ForeignKey("anomalies.id"), nullable=False)
     provider = Column(String, nullable=False)
     image_url = Column(String, nullable=False)
     captured_at = Column(DateTime(timezone=True), nullable=True)
@@ -114,8 +114,8 @@ class TestVerification(TestBase):
     __tablename__ = "verifications"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    anomaly_id = Column(String, nullable=False)
-    user_id = Column(String, nullable=False)
+    anomaly_id = Column(String, ForeignKey("anomalies.id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     vote = Column(String, nullable=False)
     comment = Column(Text)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -247,6 +247,13 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     )
     redis_patch2.start()
 
+    # Rate limiter Redis mock
+    redis_patch3 = patch(
+        "app.middleware.rate_limiter._get_redis",
+        return_value=None,  # Grace mode — rate limit kontrolü atlanır
+    )
+    redis_patch3.start()
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -255,6 +262,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides.clear()
     redis_patch.stop()
     redis_patch2.stop()
+    redis_patch3.stop()
     for p in model_patches:
         p.stop()
 

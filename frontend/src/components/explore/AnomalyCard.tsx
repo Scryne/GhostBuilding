@@ -17,6 +17,7 @@ import {
 } from "@/lib/utils";
 import type { AnomalyListItem } from "@/lib/types";
 import { MapPin, CheckCircle2, Clock } from "lucide-react";
+import Image from "next/image";
 
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -60,12 +61,12 @@ export default function AnomalyCard({
       {/* ── Thumbnail ────────────────────────────────────────────── */}
       <div className="relative h-32 overflow-hidden rounded-t-2xl bg-surface-50">
         {anomaly.thumbnail_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={anomaly.thumbnail_url}
             alt={anomaly.title || "Anomali"}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface via-surface-50 to-surface">

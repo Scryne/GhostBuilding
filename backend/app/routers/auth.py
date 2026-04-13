@@ -34,6 +34,7 @@ from app.services.auth_service import (
     require_role,
     oauth2_scheme,
 )
+from app.utils.sanitizer import validate_safe_string
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +79,12 @@ class RegisterRequest(BaseModel):
     @field_validator("username")
     @classmethod
     def validate_username(cls, v: str) -> str:
-        """Kullanıcı adı formatını doğrular."""
+        """Kullanıcı adı formatını doğrular ve XSS kontrolü yapar."""
         if not re.match(r"^[a-zA-Z0-9_]+$", v):
             raise ValueError(
                 "Kullanıcı adı sadece harf, rakam ve alt çizgi içerebilir."
             )
+        validate_safe_string(v, "Kullanıcı adı")
         return v
 
 
@@ -269,6 +271,8 @@ class ProfileUpdateRequest(BaseModel):
             raise ValueError(
                 "Kullanıcı adı sadece harf, rakam ve alt çizgi içerebilir."
             )
+        if v is not None:
+            validate_safe_string(v, "Kullanıcı adı")
         return v
 
 

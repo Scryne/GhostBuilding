@@ -21,9 +21,11 @@
     "react-hot-toast": "^2.6.0",
     "react-map-gl": "^8.1.1",
     "swr": "^2.4.1",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "@sentry/nextjs": "^7.109.0"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.2.3",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     # RATE LIMITING Configuration
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_SCAN_PER_HOUR: int = 10
+    RATE_LIMIT_LOGIN_PER_MINUTE: int = 5
+
+    # SENTRY Configuration
+    SENTRY_DSN: Optional[str] = None
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.2
+    SENTRY_PROFILES_SAMPLE_RATE: float = 0.1
+
+    # MONITORING Configuration
+    ENABLE_PROMETHEUS: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env", 

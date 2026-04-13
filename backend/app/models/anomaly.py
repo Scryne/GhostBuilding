@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Text, DateTime, text
+from sqlalchemy import Column, String, Float, Text, DateTime, text, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geometry
@@ -8,6 +8,11 @@ from app.db.base_class import Base
 
 class Anomaly(Base):
     __tablename__ = "anomalies"
+
+    __table_args__ = (
+        Index('ix_anomalies_category_status_confidence', 'category', 'status', 'confidence_score'),
+        Index('ix_anomalies_covering', 'category', 'status', 'lat', 'lng', 'confidence_score'),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lat = Column(Float, nullable=False)

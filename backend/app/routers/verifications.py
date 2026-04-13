@@ -29,7 +29,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy import and_, func, select, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +39,7 @@ from app.models.user import User
 from app.models.verification import Verification
 from app.models.enums import AnomalyStatus, VerificationVote
 from app.services.auth_service import get_current_user
+from app.utils.sanitizer import validate_safe_string
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,14 @@ class VerifyRequest(BaseModel):
         description="Opsiyonel yorum (max 2000 karakter)",
         max_length=2000,
     )
+
+    @field_validator("comment")
+    @classmethod
+    def sanitize_comment(cls, v: Optional[str]) -> Optional[str]:
+        """Yorum alanını XSS saldırılarına karşı temizler."""
+        if v is not None:
+            return validate_safe_string(v, "Yorum")
+        return v
 
 
 class VerifyResponse(BaseModel):

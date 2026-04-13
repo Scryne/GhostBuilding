@@ -1,0 +1,128 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Prometheus Alert Kuralları — GhostBuilding
+# ═══════════════════════════════════════════════════════════════════════════
+
+groups:
+  # ── API Performans Alertleri ─────────────────────────────────────────────
+  - name: ghostbuilding_api_alerts
+    rules:
+      # Error rate > %5 (son 5 dakikada)
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(ghostbuilding_http_requests_total{status_code=~"5.."}[5m]))
+            /
+            sum(rate(ghostbuilding_http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: ghostbuilding
+        annotations:
+          summary: "Yüksek hata oranı tespit edildi"
+          description: >
+            GhostBuilding API error rate {{ $value | humanizePercentage }}
+            (eşik: %5). Son 5 dakikadaki 5xx hata oranı kritik seviyede.
+          runbook: "https://docs.ghostbuilding.dev/runbooks/high-error-rate"
+
+      # Response time > 2 saniye (p95)
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ghostbuilding_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2.0
+        for: 3m
+        labels:
+          severity: warning
+          service: ghostbuilding
+        annotations:
+          summary: "Yüksek yanıt süresi tespit edildi"
+          description: >
+            GhostBuilding API p95 yanıt süresi {{ $value | humanizeDuration }}
+            (eşik: 2 saniye).
+          runbook: "https://docs.ghostbuilding.dev/runbooks/high-latency"
+
+      # Response time > 5 saniye (p95) — kritik
+      - alert: CriticalResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ghostbuilding_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 5.0
+        for: 2m
+        labels:
+          severity: critical
+          service: ghostbuilding
+        annotations:
+          summary: "Kritik yanıt süresi — sistem yavaşlıyor"
+          description: >
+            GhostBuilding API p95 yanıt süresi {{ $value | humanizeDuration }}.
+            Acil müdahale gerekli.
+
+  # ── Sistem Sağlık Alertleri ──────────────────────────────────────────────
+  - name: ghostbuilding_system_alerts
+    rules:
+      # Backend tamamen erişilemez
+      - alert: BackendDown
+        expr: up{job="ghostbuilding-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ghostbuilding
+        annotations:
+          summary: "GhostBuilding Backend erişilemez"
+          description: >
+            Backend servisi 1 dakikadır yanıt vermiyor.
+            Docker container'ı veya ağ bağlantısını kontrol edin.
+
+      # Çok fazla eşzamanlı istek
+      - alert: HighConcurrentRequests
+        expr: sum(ghostbuilding_http_requests_in_progress) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: ghostbuilding
+        annotations:
+          summary: "Yüksek eşzamanlı istek sayısı"
+          description: >
+            Şu anda {{ $value }} eşzamanlı HTTP isteği işleniyor.
+            Worker sayısını artırmayı düşünün.
+
+  # ── Celery Görev Alertleri ───────────────────────────────────────────────
+  - name: ghostbuilding_celery_alerts
+    rules:
+      # Celery görev hata oranı > %10
+      - alert: HighCeleryFailureRate
+        expr: |
+          (
+            sum(rate(ghostbuilding_celery_task_total{status="failure"}[15m]))
+            /
+            sum(rate(ghostbuilding_celery_task_total[15m]))
+          ) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          service: ghostbuilding
+        annotations:
+          summary: "Celery görev hata oranı yüksek"
+          description: >
+            Celery görev hata oranı {{ $value | humanizePercentage }}
+            (eşik: %10). Son 15 dakika incelenmeli.
+
+  # ── Anomali Tespit Alertleri ─────────────────────────────────────────────
+  - name: ghostbuilding_anomaly_alerts
+    rules:
+      # Anomali tarama süresi çok uzun (>5 dakika)
+      - alert: SlowAnomalyScan
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ghostbuilding_anomaly_scan_duration_seconds_bucket[30m])) by (le)
+          ) > 300
+        for: 10m
+        labels:
+          severity: warning
+          service: ghostbuilding
+        annotations:
+          summary: "Anomali taramaları çok yavaş"
+          description: >
+            p95 anomali tarama süresi 5 dakikayı aştı.
+            Görüntü işleme pipeline'ını optimize etmeyi düşünün.
