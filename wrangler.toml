@@ -1,0 +1,45 @@
+name = "ghostbuilding"
+compatibility_date = "2024-04-12"
+
+# Cloudflare Cache Rules and Router Configuration
+# These settings apply if the site is served through Cloudflare Pages or Workers
+
+[[routes]]
+pattern = "*/api/v1/anomalies/stats"
+script = "ghostbuilding"
+# 10 minutes edge cache
+# You can also manage this via Cloudflare Dashboard > Caching > Cache Rules
+
+[site]
+bucket = "./frontend/out"
+
+# Custom headers for caching
+[[headers]]
+for = "/api/v1/anomalies/stats"
+[headers.values]
+Cache-Control = "public, s-maxage=600, stale-while-revalidate=60"
+
+[[headers]]
+for = "/*.jpg"
+[headers.values]
+Cache-Control = "public, max-age=2592000, immutable"
+
+[[headers]]
+for = "/*.webp"
+[headers.values]
+Cache-Control = "public, max-age=2592000, immutable"
+
+[[headers]]
+for = "/*.png"
+[headers.values]
+Cache-Control = "public, max-age=2592000, immutable"
+
+[[headers]]
+for = "/_next/image*"
+[headers.values]
+Cache-Control = "public, max-age=2592000, immutable"
+
+[[headers]]
+for = "/api/*"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"

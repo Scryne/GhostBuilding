@@ -1,0 +1,36 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Prometheus Konfigürasyonu — GhostBuilding
+# ═══════════════════════════════════════════════════════════════════════════
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+# Alert kuralları dosyası
+rule_files:
+  - "alert_rules.yml"
+
+# Alertmanager bağlantısı
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+# Scrape hedefleri
+scrape_configs:
+  # ── Prometheus kendi metrikleri ──────────────────────────────────────────
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── GhostBuilding Backend API ────────────────────────────────────────────
+  - job_name: "ghostbuilding-api"
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["backend:8000"]
+        labels:
+          service: "ghostbuilding-api"
+          environment: "dev"

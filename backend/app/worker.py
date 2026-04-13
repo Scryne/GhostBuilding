@@ -15,3 +15,6 @@ from app.tasks.celery_app import celery_app  # noqa: F401
 # Görev modüllerini import et (keşif için)
 import app.tasks.scan_tasks  # noqa: F401
 import app.tasks.maintenance_tasks  # noqa: F401
+
+# Prometheus metrik sinyallerini kaydet
+import app.utils.celery_signals  # noqa: F401

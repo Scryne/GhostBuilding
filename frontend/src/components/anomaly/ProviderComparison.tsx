@@ -14,6 +14,7 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import type { AnomalyImage, ImageProvider } from "@/lib/types";
+import Image from "next/image";
 
 // ── Sağlayıcı Etiketleri ─────────────────────────────────────────────────
 
@@ -185,12 +186,12 @@ export default function ProviderComparison({
           onPointerUp={onPointerUp}
           id="provider-comparison-slider"
         >
-          {/* Sol resim (arka plan) — dynamic external tile, not optimizable */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={leftImage.image_url}
             alt={`${PROVIDER_LABELS[leftProvider] || leftProvider}`}
-            className="absolute inset-0 w-full h-full object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover"
             draggable={false}
           />
 
@@ -199,11 +200,12 @@ export default function ProviderComparison({
             className="absolute inset-0 overflow-hidden"
             style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={rightImage.image_url}
               alt={`${PROVIDER_LABELS[rightProvider] || rightProvider}`}
-              className="absolute inset-0 w-full h-full object-cover"
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover"
               draggable={false}
             />
           </div>

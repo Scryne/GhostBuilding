@@ -7,10 +7,29 @@
  * doğrudan harita bileşenini render eder.
  * İleride /map route'u eklendiğinde redirect kullanılır.
  */
+
+const datasetSchema = {
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  name: "GhostBuilding Anomalies Dataset",
+  description: "A comprehensive dataset of global map anomalies, censored areas, and hidden structures.",
+  url: "https://ghostbuilding.dev/",
+  creator: {
+    "@type": "Organization",
+    name: "GhostBuilding"
+  }
+};
+
 export default function HomePage() {
-  // İleride: redirect("/map");
-  // Şimdilik: harita ana sayfada render edilir
-  return <MapPage />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchema) }}
+      />
+      <MapPage />
+    </>
+  );
 }
 
 // ── Inline Map Page (ileride /map route'a taşınacak) ──────────────────────

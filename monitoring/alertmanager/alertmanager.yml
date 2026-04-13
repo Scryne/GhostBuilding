@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Alertmanager Konfigürasyonu — GhostBuilding
+#
+# Şimdilik stdout receiver ile temel yapılandırma.
+# Slack/PagerDuty/Email entegrasyonu için receivers bölümünü güncelleyin.
+# ═══════════════════════════════════════════════════════════════════════════
+
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ["alertname", "service"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: "default-receiver"
+  routes:
+    # Kritik alertler — hemen bildir
+    - match:
+        severity: critical
+      receiver: "default-receiver"
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Uyarılar — 5 dk bekle, 4 saatte bir tekrarla
+    - match:
+        severity: warning
+      receiver: "default-receiver"
+      group_wait: 1m
+      repeat_interval: 4h
+
+receivers:
+  - name: "default-receiver"
+    # Şu anda webhook yok — Alertmanager UI'dan görüntülenir
+    # Slack entegrasyonu için aşağıyı aktifleştirin:
+    # slack_configs:
+    #   - api_url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+    #     channel: "#ghostbuilding-alerts"
+    #     title: "{{ .GroupLabels.alertname }}"
+    #     text: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
+    #     send_resolved: true
+
+inhibit_rules:
+  # Backend tamamen çöktüyse, performans alertlerini bastır
+  - source_match:
+      alertname: BackendDown
+    target_match_re:
+      alertname: "(HighErrorRate|HighResponseTime|CriticalResponseTime)"
+    equal: ["service"]

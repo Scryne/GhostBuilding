@@ -1,0 +1,76 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# GhostBuilding — Monitoring Stack (Prometheus + Grafana)
+#
+# Kullanım:
+#   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+#
+# Erişim:
+#   Prometheus: http://localhost:9090
+#   Grafana:    http://localhost:3001 (admin / $GRAFANA_ADMIN_PASSWORD)
+#   Metrics:    http://localhost:8000/metrics
+# ═══════════════════════════════════════════════════════════════════════════
+
+services:
+  # ── Prometheus ────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: ghostbuilding-prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - default
+
+  # ── Grafana ───────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: ghostbuilding-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-ghostbuilding_admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_HTTP_PORT=3001
+      # Provisioning
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/ghostbuilding-dashboard.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    networks:
+      - default
+
+  # ── Alertmanager (optional — ileride Slack/PagerDuty entegrasyonu için) ──
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: ghostbuilding-alertmanager
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+    networks:
+      - default
+
+volumes:
+  prometheus_data:
+  grafana_data:

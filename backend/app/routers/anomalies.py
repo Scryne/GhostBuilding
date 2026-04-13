@@ -18,7 +18,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy import func, text, case, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -243,12 +243,28 @@ class ScanRequest(BaseModel):
         }
     )
 
-    lat: float = Field(..., description="Tarama merkez enlemi", ge=-85.0511, le=85.0511)
+    lat: float = Field(..., description="Tarama merkez enlemi", ge=-90.0, le=90.0)
     lng: float = Field(..., description="Tarama merkez boylamı", ge=-180.0, le=180.0)
     zoom: Optional[int] = Field(15, description="Zoom seviyesi (varsayılan 15)", ge=1, le=20)
     radius_km: Optional[float] = Field(
-        5.0, description="Tarama yarıçapı (km, varsayılan 5)", gt=0, le=50.0
+        5.0, description="Tarama yarıçapı (km, 0.1–50)", ge=0.1, le=50.0
     )
+
+    @field_validator("lat")
+    @classmethod
+    def validate_lat(cls, v: float) -> float:
+        """Enlem -90..90 arasında olmalıdır."""
+        if not -90.0 <= v <= 90.0:
+            raise ValueError("Enlem -90 ile 90 arasında olmalıdır.")
+        return round(v, 8)
+
+    @field_validator("lng")
+    @classmethod
+    def validate_lng(cls, v: float) -> float:
+        """Boylam -180..180 arasında olmalıdır."""
+        if not -180.0 <= v <= 180.0:
+            raise ValueError("Boylam -180 ile 180 arasında olmalıdır.")
+        return round(v, 8)
 
 
 class ScanResponse(BaseModel):

@@ -21,6 +21,7 @@ const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   revalidateOnReconnect: true,
   errorRetryCount: 3,
   dedupingInterval: 5_000,
+  keepPreviousData: true,
 };
 
 // ── Anomali Listesi ───────────────────────────────────────────────────────
