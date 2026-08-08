@@ -789,7 +789,7 @@ def scan_high_priority_regions() -> Dict[str, Any]:
         with engine.connect() as conn:
             rows = conn.execute(
                 text("""
-                    SELECT DISTINCT lat, lng
+                    SELECT DISTINCT lat, lng, confidence_score
                     FROM anomalies
                     WHERE confidence_score >= :threshold
                       AND status != 'REJECTED'

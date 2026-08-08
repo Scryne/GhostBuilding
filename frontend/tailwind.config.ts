@@ -25,17 +25,17 @@ const config: Config = {
           900: "#0A172A",
         },
         secondary: {
-          DEFAULT: "#2E6DA4",
-          50: "#EAF1F8",
-          100: "#CBDDED",
-          200: "#A1C2DD",
-          300: "#77A7CC",
-          400: "#518DB8",
-          500: "#2E6DA4",
-          600: "#275D8C",
-          700: "#204D74",
-          800: "#193D5C",
-          900: "#122D44",
+          DEFAULT: "#4A7CF7",
+          50: "#EBF0FE",
+          100: "#CBDAFD",
+          200: "#A3BDFC",
+          300: "#7BA0FA",
+          400: "#5E8FF8",
+          500: "#4A7CF7",
+          600: "#3A64D6",
+          700: "#2E50B4",
+          800: "#233E92",
+          900: "#1A2E70",
         },
         accent: {
           DEFAULT: "#E63946",
@@ -93,25 +93,53 @@ const config: Config = {
           900: "#1D3445",
         },
 
-        // ── Surface / Background ──────────────────────────────────────
-        background: "#0A0E1A",
+        // ── Surface / Background — Dashboard-inspired warm darks ─────
+        background: "#0F1117",
         surface: {
-          DEFAULT: "#111827",
-          50: "#1C2640",
-          100: "#182236",
-          200: "#151E30",
-          300: "#121A2A",
-          400: "#111827",
+          DEFAULT: "#181A20",
+          50: "#22252E",
+          100: "#1E2128",
+          200: "#1A1D24",
+          300: "#161920",
+          400: "#181A20",
+        },
+        card: {
+          DEFAULT: "#1E2028",
+          hover: "#252730",
+          elevated: "#282A34",
         },
         border: {
-          DEFAULT: "#1F2937",
-          light: "#374151",
+          DEFAULT: "#2A2D38",
+          light: "#363944",
+          subtle: "#1F2230",
         },
 
         // ── Semantic ──────────────────────────────────────────────────
-        foreground: "#F9FAFB",
-        muted: "#9CA3AF",
-        "muted-foreground": "#6B7280",
+        foreground: "#F0F2F5",
+        muted: "#8B8FA3",
+        "muted-foreground": "#6B6F82",
+
+        // ── Status Colors ─────────────────────────────────────────────
+        success: {
+          DEFAULT: "#10B981",
+          light: "#34D399",
+          dark: "#059669",
+        },
+        warning: {
+          DEFAULT: "#F59E0B",
+          light: "#FBBF24",
+          dark: "#D97706",
+        },
+        danger: {
+          DEFAULT: "#EF4444",
+          light: "#F87171",
+          dark: "#DC2626",
+        },
+        info: {
+          DEFAULT: "#3B82F6",
+          light: "#60A5FA",
+          dark: "#2563EB",
+        },
       },
 
       fontFamily: {
@@ -122,6 +150,7 @@ const config: Config = {
       borderRadius: {
         "2xl": "1rem",
         "3xl": "1.25rem",
+        "4xl": "1.5rem",
       },
 
       backdropBlur: {
@@ -129,21 +158,31 @@ const config: Config = {
       },
 
       boxShadow: {
-        glow: "0 0 20px rgba(46, 109, 164, 0.3)",
-        "glow-accent": "0 0 20px rgba(230, 57, 70, 0.3)",
-        "glow-ghost": "0 0 20px rgba(244, 162, 97, 0.3)",
-        "glow-sm": "0 0 10px rgba(46, 109, 164, 0.2)",
+        glow: "0 0 20px rgba(74, 124, 247, 0.25)",
+        "glow-accent": "0 0 20px rgba(230, 57, 70, 0.25)",
+        "glow-ghost": "0 0 20px rgba(244, 162, 97, 0.25)",
+        "glow-sm": "0 0 10px rgba(74, 124, 247, 0.15)",
+        "glow-success": "0 0 12px rgba(16, 185, 129, 0.2)",
         panel:
-          "0 4px 24px -4px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.03)",
+          "0 4px 24px -4px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.03)",
+        "card-hover":
+          "0 8px 32px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(74, 124, 247, 0.08)",
+        "card-float":
+          "0 12px 40px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04)",
+        inner: "inset 0 2px 4px rgba(0, 0, 0, 0.3)",
       },
 
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "fade-in": "fadeIn 0.3s ease-out",
-        "slide-up": "slideUp 0.3s ease-out",
-        "slide-down": "slideDown 0.3s ease-out",
-        "slide-in-right": "slideInRight 0.3s ease-out",
+        "fade-in": "fadeIn 0.4s ease-out",
+        "slide-up": "slideUp 0.35s ease-out",
+        "slide-down": "slideDown 0.35s ease-out",
+        "slide-in-right": "slideInRight 0.35s ease-out",
+        "slide-in-left": "slideInLeft 0.3s ease-out",
         shimmer: "shimmer 2s linear infinite",
+        "float": "float 6s ease-in-out infinite",
+        "glow-pulse": "glowPulse 2s ease-in-out infinite",
+        "scale-in": "scaleIn 0.2s ease-out",
       },
 
       keyframes: {
@@ -152,20 +191,36 @@ const config: Config = {
           "100%": { opacity: "1" },
         },
         slideUp: {
-          "0%": { transform: "translateY(12px)", opacity: "0" },
+          "0%": { transform: "translateY(16px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
         },
         slideDown: {
-          "0%": { transform: "translateY(-12px)", opacity: "0" },
+          "0%": { transform: "translateY(-16px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
         },
         slideInRight: {
           "0%": { transform: "translateX(24px)", opacity: "0" },
           "100%": { transform: "translateX(0)", opacity: "1" },
         },
+        slideInLeft: {
+          "0%": { transform: "translateX(-24px)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        glowPulse: {
+          "0%, 100%": { boxShadow: "0 0 0 0 rgba(74, 124, 247, 0)" },
+          "50%": { boxShadow: "0 0 16px 4px rgba(74, 124, 247, 0.15)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
         },
       },
     },

@@ -124,6 +124,23 @@ class TestVerification(TestBase):
     user = relationship("TestUser", back_populates="verifications")
 
 
+class TestScanJob(TestBase):
+    __tablename__ = "scan_jobs"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    status = Column(String, nullable=False, default="PENDING")
+    
+    center_lat = Column(Float, nullable=False)
+    center_lng = Column(Float, nullable=False)
+    radius_km = Column(Float, nullable=False)
+    
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    anomaly_count = Column(Integer, default=0)
+
 # ---------------------------------------------------------------------------
 # Async Engine & Session
 # ---------------------------------------------------------------------------
@@ -189,6 +206,7 @@ def _patch_models():
         patch("app.models.anomaly.Anomaly", TestAnomaly),
         patch("app.models.anomaly_image.AnomalyImage", TestAnomalyImage),
         patch("app.models.verification.Verification", TestVerification),
+        patch("app.models.scan_job.ScanJob", TestScanJob),
     ]
     return patches
 
@@ -276,6 +294,13 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 async def test_user(db_session: AsyncSession) -> TestUser:
     """Standart USER rolünde test kullanıcısı."""
     from app.services.auth_service import AuthService
+    from sqlalchemy import select
+
+    stmt = select(TestUser).where(TestUser.email == "testuser@ghostbuilding.io")
+    result = await db_session.execute(stmt)
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing
 
     user = TestUser(
         id=str(uuid.uuid4()),
@@ -297,6 +322,13 @@ async def test_user(db_session: AsyncSession) -> TestUser:
 async def test_moderator(db_session: AsyncSession) -> TestUser:
     """MODERATOR rolünde test kullanıcısı."""
     from app.services.auth_service import AuthService
+    from sqlalchemy import select
+
+    stmt = select(TestUser).where(TestUser.email == "moderator@ghostbuilding.io")
+    result = await db_session.execute(stmt)
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing
 
     user = TestUser(
         id=str(uuid.uuid4()),
@@ -318,6 +350,13 @@ async def test_moderator(db_session: AsyncSession) -> TestUser:
 async def test_admin(db_session: AsyncSession) -> TestUser:
     """ADMIN rolünde test kullanıcısı."""
     from app.services.auth_service import AuthService
+    from sqlalchemy import select
+
+    stmt = select(TestUser).where(TestUser.email == "admin@ghostbuilding.io")
+    result = await db_session.execute(stmt)
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing
 
     user = TestUser(
         id=str(uuid.uuid4()),
@@ -386,6 +425,14 @@ def auth_header(token: str) -> dict:
 @pytest_asyncio.fixture
 async def test_anomaly(db_session: AsyncSession) -> TestAnomaly:
     """Test anomalisi (PENDING durumunda)."""
+    from sqlalchemy import select
+
+    stmt = select(TestAnomaly).where(TestAnomaly.title == "Test Anomaly — İstanbul")
+    result = await db_session.execute(stmt)
+    existing = result.scalars().first()
+    if existing:
+        return existing
+
     anomaly = TestAnomaly(
         id=str(uuid.uuid4()),
         lat=41.0082,

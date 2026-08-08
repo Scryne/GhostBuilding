@@ -441,10 +441,18 @@ class StatsResponse(BaseModel):
 
 
 async def _get_redis_client():
-    """Async Redis client döndürür."""
+    """Async Redis client döndürür (app.state.redis fallback ile)."""
     import redis.asyncio as aioredis
 
     return aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+
+
+async def _get_redis_from_request(request: Request):
+    """Request'ten paylaşılan Redis client'ı alır, yoksa yeni oluşturur."""
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client:
+        return redis_client
+    return await _get_redis_client()
 
 
 async def _check_rate_limit(request: Request) -> None:
@@ -463,7 +471,7 @@ async def _check_rate_limit(request: Request) -> None:
     rate_key = f"ratelimit:scan:{client_ip}"
 
     try:
-        r = await _get_redis_client()
+        r = await _get_redis_from_request(request)
         current = await r.get(rate_key)
 
         if current is not None and int(current) >= 5:
@@ -481,7 +489,6 @@ async def _check_rate_limit(request: Request) -> None:
         pipe.incr(rate_key)
         pipe.expire(rate_key, 3600)  # 1 saat TTL
         await pipe.execute()
-        await r.aclose()
 
     except HTTPException:
         raise
@@ -559,8 +566,9 @@ async def list_anomalies(
         # radius_km → metre cevir; ST_DWithin geography modunda metre kullanır
         radius_m = radius_km * 1000.0
         point_wkt = f"SRID=4326;POINT({lng} {lat})"
+        from geoalchemy2 import Geography
         spatial_filter = func.ST_DWithin(
-            Anomaly.geom.cast(text("geography")),
+            Anomaly.geom.cast(Geography),
             func.ST_GeographyFromText(point_wkt),
             radius_m,
         )
@@ -573,10 +581,13 @@ async def list_anomalies(
 
     total_pages = max(1, (total + limit - 1) // limit)
 
+    from sqlalchemy.orm import selectinload
+
     # --- Veri sorgusu ---
     offset = (page - 1) * limit
     data_stmt = (
         select(Anomaly)
+        .options(selectinload(Anomaly.images))
         .where(and_(*conditions))
         .order_by(Anomaly.detected_at.desc().nullslast())
         .offset(offset)
@@ -616,6 +627,102 @@ async def list_anomalies(
             total_pages=total_pages,
         ),
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ENDPOINT: GET /anomalies/export — Anomali Export
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/export",
+    summary="Anomali verilerini dışa aktar",
+    description=(
+        "Filtrelenmiş anomali verilerini CSV veya JSON formatında döndürür. "
+        "Proje planındaki 'Veri ihracat ve rapor üretme' özelliğini karşılar."
+    ),
+    response_description="CSV veya JSON formatında anomali listesi",
+    tags=["anomalies"],
+)
+async def export_anomalies(
+    format: str = Query("json", description="Export formatı: json veya csv", regex="^(json|csv)$"),
+    category: Optional[str] = Query(None, description="Kategori filtresi"),
+    min_confidence: float = Query(0.0, description="Minimum güven skoru", ge=0, le=100),
+    status_filter: Optional[str] = Query(None, alias="status", description="Durum filtresi"),
+    limit: int = Query(1000, description="Maksimum kayıt sayısı", ge=1, le=10000),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Anomali verilerini CSV veya JSON formatında dışa aktarır.
+
+    - **JSON**: Direkt response body olarak döndürülür.
+    - **CSV**: `Content-Disposition: attachment` ile dosya olarak indirilir.
+    """
+    from fastapi.responses import StreamingResponse
+    import io
+    import csv
+
+    # Filtre koşulları
+    conditions = [Anomaly.confidence_score >= min_confidence]
+    if category:
+        conditions.append(Anomaly.category == category)
+    if status_filter:
+        conditions.append(Anomaly.status == status_filter)
+
+    stmt = (
+        select(Anomaly)
+        .where(and_(*conditions))
+        .order_by(Anomaly.detected_at.desc().nullslast())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+
+    if format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "id", "lat", "lng", "category", "confidence_score",
+            "title", "status", "detected_at", "source_providers",
+            "detection_methods",
+        ])
+        for row in rows:
+            writer.writerow([
+                str(row.id), row.lat, row.lng, row.category,
+                row.confidence_score, row.title or "", row.status,
+                row.detected_at.isoformat() if row.detected_at else "",
+                ",".join(row.source_providers or []),
+                ",".join(row.detection_methods or []),
+            ])
+
+        output.seek(0)
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": "attachment; filename=ghostbuilding_anomalies.csv",
+            },
+        )
+
+    # JSON format (default)
+    data = [
+        {
+            "id": str(row.id),
+            "lat": row.lat,
+            "lng": row.lng,
+            "category": row.category,
+            "confidence_score": row.confidence_score,
+            "title": row.title,
+            "description": row.description,
+            "status": row.status,
+            "detected_at": row.detected_at.isoformat() if row.detected_at else None,
+            "source_providers": row.source_providers,
+            "detection_methods": row.detection_methods,
+        }
+        for row in rows
+    ]
+
+    return {"total": len(data), "format": "json", "data": data}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -693,14 +800,13 @@ async def get_anomaly_stats(
         for row in top_rows
     ]
 
-    # --- Ülke/bölge dağılımı ---
-    # meta_data JSONB içinde "country" veya "region" alanından okunur.
-    # Eğer yoksa "Unknown" olarak gruplandırılır.
+    from sqlalchemy import cast, String, text
+
     region_stmt = (
         select(
             func.coalesce(
-                Anomaly.meta_data.op("->>")("country"),
-                Anomaly.meta_data.op("->>")("region"),
+                cast(Anomaly.meta_data.op("->>")("country"), String),
+                cast(Anomaly.meta_data.op("->>")("region"), String),
                 text("'Unknown'"),
             ).label("region"),
             func.count(Anomaly.id).label("count"),
@@ -896,21 +1002,18 @@ async def start_scan(
             detail=f"Maksimum tarama yarıçapı {settings.MAX_SCAN_RADIUS_KM} km'dir.",
         )
 
-    # ScanJob kaydı oluştur
-    scan_job_id = str(uuid.uuid4())
-    insert_sql = text("""
-        INSERT INTO scan_jobs (id, status, center_lat, center_lng, radius_km)
-        VALUES (:id, 'PENDING', :lat, :lng, :radius_km)
-    """)
-    await db.execute(
-        insert_sql,
-        {
-            "id": scan_job_id,
-            "lat": body.lat,
-            "lng": body.lng,
-            "radius_km": radius,
-        },
+    from app.models.scan_job import ScanJob
+
+    scan_job_id = uuid.uuid4()
+    scan_job_str = str(scan_job_id)
+    scan_job = ScanJob(
+        id=scan_job_str,
+        status="PENDING",
+        center_lat=body.lat,
+        center_lng=body.lng,
+        radius_km=radius,
     )
+    db.add(scan_job)
     await db.commit()
 
     # Celery görevi başlat
@@ -922,7 +1025,7 @@ async def start_scan(
             "lng": body.lng,
             "zoom": body.zoom or 15,
             "radius_km": radius,
-            "scan_job_id": scan_job_id,
+            "scan_job_id": scan_job_str,
         },
         queue="scan",
     )
@@ -1001,7 +1104,6 @@ async def get_scan_status(task_id: str) -> ScanStatusResponse:
     try:
         r = await _get_redis_client()
         progress_raw = await r.get(f"scan:progress:{task_id}")
-        await r.aclose()
 
         if progress_raw:
             progress_data = json.loads(progress_raw)

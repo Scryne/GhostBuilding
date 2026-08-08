@@ -58,9 +58,12 @@ async def lifespan(app: FastAPI):
         redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
         # Verify redis connection
         await redis_client.ping()
+        # Store in app.state for router access (avoids per-request connection creation)
+        app.state.redis = redis_client
         logger.info("redis_connected")
     except Exception as e:
         logger.error("redis_connection_failed", error=str(e))
+        app.state.redis = None
 
     # Yield control to the application
     yield

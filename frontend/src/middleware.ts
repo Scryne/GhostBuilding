@@ -100,6 +100,22 @@ export function middleware(request: NextRequest) {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
+  // Content Security Policy (CSP)
+  const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'unsafe-eval' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' blob: data: https://*.cartocdn.com https://*.openstreetmap.org https://nominatim.openstreetmap.org https://api.mapbox.com https://services.sentinel-hub.com;
+    font-src 'self';
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+    frame-ancestors 'none';
+    connect-src 'self' https://*.cartocdn.com https://nominatim.openstreetmap.org https://api.mapbox.com https://services.sentinel-hub.com http://localhost:8000;
+  `.replace(/\s{2,}/g, " ").trim();
+
+  response.headers.set("Content-Security-Policy", cspHeader);
+
   return response;
 }
 

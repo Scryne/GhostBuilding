@@ -1,0 +1,272 @@
+
+GHOSTBUILDING
+Global Map Anomaly Intelligence Platform
+
+
+PROJE PLANLAMA DOKUMANi
+Versiyon 1.0  |  Nisan 2026
+Gizli — Sadece Proje Ekibi
+
+
+1. Yonetici Ozeti
+
+GhostBuilding, dunyanin farkli harita saglayicilarinin (Google Maps, OpenStreetMap, Bing Maps, Yandex) ayni koordinat icin farkli veriler sundugundan yola cikarak gelistirilen kuresel bir acik kaynak istihbarat (OSINT) platformudur. Platform; gizlenen yapilari, kasitli bulaniklastrilan alanlari, haritadan silinen binalari ve farkli saglayicilar arasindaki tutarsizliklari otomatik olarak tespit ederek kullanicilara interaktif bir harita arabirimi uzerinden sunar.
+
+Bu proje; gazeteciler, arastirmaci sivil toplum kuruluslari, akademisyenler ve kuresel olcekte merakli kullanicilar icin ucretsiz, acik ve bagimsiz bir arac olarak tasarlanmistir. Benzer ticari araclarin (Maltego, SpiderFoot) sunmadigi harita anomali tespiti odagini, sade bir kullanici deneyimiyle birlestiren GhostBuilding, kendi kategorisinde dunya genelinde benzersiz bir konumda yer almaktadir.
+
+
+
+2. Vizyon ve Hedefler
+
+2.1 Proje Vizyonu
+GhostBuilding'in vizyonu, harita verilerindeki kuresel tutarsizliklari ve kasitli manipulasyonlari herkesin erisebilecegi, kullanimi kolay bir platform uzerinden ortaya cikararak dijital cografya alaninda seffafligi artirmaktir. Ticari harita saglayicilarin gizledigi ya da tahrif ettigi alanlar; askeri tesisler, cezaevleri, hassas endustriyel bolgeleri ve ulusal guvenlik yapilari baslica hedef kategorileri arasinda yer almaktadir.
+
+2.2 Temel Hedefler
+Kisa Vadeli Hedefler (Ay 1-3)
+En az 4 farkli harita saglayicisinin tile verilerini karsilastiran cekirdek motor gelistirmek
+Kasitli bulaniklastrma tespiti icin goruntu analizi algoritmasini hayata gecirmek
+Interaktif harita arabirimi ile ilk calisir prototipi kullanicilara sunmak
+Wayback Machine entegrasyonuyla tarihsel degisim takibini aktif etmek
+
+Orta Vadeli Hedefler (Ay 3-5)
+Topluluk dogrulama sistemini devreye almak
+Anomali veritabaninda 5.000+ dogrulanmis kayit olusturmak
+API uzerinden veri erisimi saglamak
+Medya ve arastirma toplulugunda marka bilinirligini olusturmak
+
+Uzun Vadeli Hedefler (Ay 5-6+)
+Gunluk otomatik tarama ve anomali bildirimi sistemini kurmak
+Aylik aktif kullanici sayisini 10.000'e ulastirmak
+Gazeteci ve NGO ortakliklari olusturmak
+Acik kaynak toplulugu ve katkilcilarla surdurulebilir ekosistemi kurmak
+
+2.3 Basari Metrikleri
+
+
+3. Problem Tanimi ve Cozum
+
+3.1 Cozulen Problem
+Dunya genelinde ticari ve devlet destekli harita saglayicilari, cesitli gerekcelere dayanarak belirli cografi alanlari kasitli olarak gizlemekte, bulaniklasmaktadir ya da yanlis temsil etmektedir. Bu durum sistematik bir bilgi asimetrisine yol acmakta ve acik kaynak arastirmacilarin, gazetecilerin ve vatandaslarin gerceklige ulasmasini engellemektedir.
+
+Belgelenmiş Anomali Ornekleri
+Rusya: Bircok askeri usse ait uydu goruntuleri Google Maps'te kasitli olarak bulaniklanmistir.
+Israil: ABD kaynakli uydu verilerinde belirli stratejik tesisler dusuk cozunurlukle gosterilmektedir.
+Kuzey Kore: Neredeyse tum altyapi haritalardan eksik ya da yanlis islenm istir.
+Cin: Harita koordinat sistemleri arasinda kasitli sapma (GCJ-02 ve WGS-84 farki) uygulanmaktadir.
+Turkiye: Bazi hassas askeri ve guvenlik alanlarinda farkli saglayicilarda cakismazliklar mevcuttur.
+
+3.2 Mevcut Cozumlerin Eksikleri
+
+
+4. Veri Kaynaklari ve Entegrasyon
+
+GhostBuilding, analiz motorunu beslemek icin birden fazla acik kaynak ve API'den veri ceker. Tum kaynaklar ucretsiz veya dusuk maliyetli erisim sunmaktadir.
+
+4.1 Harita Saglayicilari
+
+4.2 Uydu ve Tarihsel Goruntu Kaynaklari
+
+4.3 Destekleyici Veri Kaynaklari
+OpenAerialMap: Insansiz hava araci ve ucak goruntuleri (acik lisans)
+ICIJ Offshore Leaks: Panama/Pandora belgelerinden elde edilen mulkiyet verileri
+OpenCorporates: Sirket kayitlari ve tapu bilgileri ile capraz sorgu
+GeoNames: Yer adi dogrulama ve koordinat eslestirme
+GADM: Ulusal sinir ve idari bolge verileri
+
+
+5. Teknik Mimari
+
+5.1 Genel Mimari
+GhostBuilding, microservice mimarisine dayali, katmanli bir yapida tasarlanmistir. Her katman bagimsiz olarak olceklenebilir ve test edilebilir sekilde kurgulanmistir.
+
+Katman 1: Veri Toplama (Data Ingestion)
+Tile Fetcher: Koordinat bazli coklu saglayici tile cekimi (Python, asyncio)
+OSM Collector: Overpass API uzerinden vektor bina poligonu cekimi
+Archive Crawler: Wayback Machine CDX API ile tarihsel goruntu arsivleme
+Satellite Puller: Sentinel Hub ve NASA GIBS'ten gercek zamanli uydu verisi
+
+Katman 2: Analiz Motoru (Analysis Engine)
+Pixel Differencer: Tile hizalama ve piksel fark hesabı (OpenCV, NumPy)
+Blur Detector: Laplacian varyans tabanli bulaniklik tespiti
+Geospatial Joiner: Vektor-raster capraz dogrulama (GeoPandas, Shapely)
+Time Series Analyzer: Cok tarihli goruntu degisim analizi
+Anomaly Scorer: Cok boyutlu agirliklandirma ile guven skoru uretimi
+
+Katman 3: Siniflandirma ve Depolama
+PostgreSQL + PostGIS: Cografi veri depolama ve mekansal sorgulama
+Redis: API yaniti onbellekleme ve rate limiting
+MinIO / S3: Goruntu ve tile depolama
+Elasticsearch: Tam metin arama ve anomali indeksleme
+
+Katman 4: API Katmani
+FastAPI (Python): REST API, asenkron islem destekli
+GraphQL: Esnek sorgulama ihtiyaci icin ek endpoint
+WebSocket: Gercek zamanli bildirim kanali
+
+Katman 5: On Yuz (Frontend)
+Next.js (React): Sunucu tarafli isleme ile hizli sayfa yukleme
+Leaflet.js + MapLibre GL: Interaktif harita katmani yonetimi
+Tailwind CSS: Hizli ve tutarli UI gelistirme
+D3.js: Anomali zaman serisi grafikleri
+
+5.2 Anomali Tespit Algoritmalari
+A. Pixel Diff Algoritmasi
+Iki farkli saglayicidan ayni z/x/y tile koordinati icin goruntu cekilir. Goruntular hizalanir ve piksel bazinda mutlak fark hesaplanir. Fark skoru belirlenen esik degerini asarsa anomali olarak isaretlenir.
+Kullanilan Kutuphaneler: OpenCV, Pillow, NumPy
+Esik Degeri: Piksel farki %15 uzerinde ise uyari; %30 uzerinde ise kesin anomali
+Zaman Karmasikligi: O(n) — n = piksel sayisi
+
+B. Blur Detector Algoritmasi
+Kasitli bulaniklastrma, dogal dusuk cozunurlukten farkli bir frekans imzasi birakmaktadir. Laplacian varyans yontemi bu farki matematiksel olarak olcer.
+Laplacian Varyans: Deger < 100 ise yuksek bulaniklik suphecisi
+FFT Analizi: Frekans uzayinda anomal dusuk gecis filtresi tespiti
+Bolgesel Karsilastirma: Ayni tilein farkli saglayicilardaki keskinlik skoru karsilastirmasi
+
+C. Geospatial Join Algoritmasi
+OSM'den bina poligonlari Shapely ile geoJSON formatinda cekilir. Sentinel uydu goruntusunde YOLO v8 nano modeliyle nesne tespiti yapilir. Her iki kaynak kesitirilir; 'bina var ama uydu goruntusunde yok' ve 'uydu goruntusunde var ama haritada yok' durumlar ayristi siniflandirilir.
+
+
+6. Anomali Kategorileri ve Siniflandirma
+
+GhostBuilding dort temel anomali kategorisi tanimlamaktadir. Her kategori farkli tespit yontemleri ve farkli guc seviyeleri gerektirmektedir.
+
+
+6.1 Guven Skoru Sistemi
+Her anomali, birden fazla boyuttan hesaplanan bir guven skoru (0-100) ile eslestirilmektedir.
+
+Veri Kaynagi Tutarsizligi (%30): Kac farkli saglayici bu anomaliyi gosteriyor?
+Goruntu Analizi Skoru (%25): Pixel diff ve blur dedektoru sonuclari
+Tarihsel Degisim (%20): Wayback Machine karsilastirmasinda ani degisim var mi?
+Topluluk Dogrulamasi (%15): Kac kullanici bu anomaliyi dogruladi?
+Coklu Uydu Karsilastirmasi (%10): Sentinel ve NASA GIBS sonuclari uyumlu mu?
+
+
+7. Gelistirme Yol Haritasi
+
+Faz 1: Temel Altyapi (Ay 1-2)
+
+Faz 2: MVP (Ay 3)
+
+Faz 3: Topluluk ve Olcekleme (Ay 4-5)
+Kullanici kayit ve kimlik dogrulama sistemi
+Topluluk dogrulama paneli (oy sistemi, guven skoru guncelleme)
+E-posta bildirimleri ve yeni anomali uyarilari
+API token yonetimi ve rate limiting
+Performans optimizasyonu ve CDN entegrasyonu
+Kapsamli dokumantasyon ve acik kaynak hazirligi
+
+Faz 4: Buyume ve Ortakliklar (Ay 6)
+Medya ve NGO ortaklik programi baslangici
+Bolgese odakli tarama kampanyalari (Orta Dogu, Bati Pasifik, Rusya)
+Veri ihracat ve rapor uretme ozellikleri
+Akademik yayim ve konferans katilimi icin hazirlik
+
+
+8. Teknoloji Yigini
+
+8.1 Backend
+
+8.2 Veritabani ve Depolama
+
+8.3 Frontend
+
+8.4 DevOps ve Altyapi
+Docker + Docker Compose: Containerizasyon ve yerel gelistirme ortami
+GitHub Actions: CI/CD boru hatti — test, lint, deploy
+Cloudflare: CDN, DDoS korumasi, ucretsiz SSL
+Vercel: Frontend hosting (ucretsiz tier yeterli)
+Railway / Render: Backend ve veritabani hosting (dusuk baslangic maliyeti)
+
+
+9. Kullanici Deneyimi ve Arayuz Tasarimi
+
+9.1 Temel Ekranlar
+Ana Harita Ekrani
+Kullanicinin ilk gorum noktasidir. Tam ekran interaktif harita uzerinde anomali konumlari farkli renk ve ikonlarla isaretlenmistir. Ust aralik cubugunda anlasmalI bir Bul dusme kontrolu mevcuttur; sag panel secilen anomalinin detayini gostermektedir.
+Anomali katmanlari toggle edilebilir (Ghost, Gizli, Sansurlu, Goruntu Farki)
+Guven skoru filtresi (yalnizca %80+ guvenli goster gibi)
+Minimap: Kuresel anomali yogunluk haritasi
+
+Anomali Detay Paneli
+Bir anomaliye tiklanandiginda acilan panel su bilgileri sunmaktadir: koordinatlar, kesfedilme tarihi, kategori, guven skoru, kaynak saglayicilar ve tarihsel goruntu karsilastirmasi. Karsilastirma, 'before/after slider' (sol-sag kaydirmali) goruntu araciligi ile gerceklestirilmektedir.
+
+Kesif Sayfasi
+Son eklenen, en cok dogrulanan ve en guclu anomalilerin listesi. Arama, filtreleme, ulke/kategori bazli siralama desteklenmektedir. Haber degeri tasiyabilecek lokasyonlar editorial olarak one cikarilmaktadir.
+
+Katki ve Dogrulama Sayfasi
+Kullanicilarin yeni koordinat onerisi ekleyebildigi ve mevcut anomalileri dogrulaydigi arayuz. Basit bir puan ve rozet sistemi toplulugu motive etmektedir.
+
+9.2 Tasarim Ilkeleri
+Sadelk: Haritanin onunde hicbir UI unsuru yoktur; tum kontroller kenar panelde gizlidir.
+Seffaflik: Her anomali icin tespit kaynagi, yontem ve guven skoru herkese aciktir.
+Mobil Uyumluluk: Responsive tasarim — sahada bir cihazla da tam deneyim.
+Erisebilirlik: WCAG 2.1 AA standartlari, klavye navigasyonu, ekran okuyucu destegi.
+Hiz: Ilk anlamli boyama (FCP) < 1.5 saniye hedeflenmektedir.
+
+
+10. Para Kazanma ve Surdurulebilirlik
+
+GhostBuilding temel katmani herkese ucretsiz ve acik kaynak olacaktir. Surdurulebilirlik icin asagidaki modeller degerlendirilmektedir:
+
+
+
+11. Risk Yonetimi
+
+
+
+12. Lansman ve Buyume Stratejisi
+
+12.1 Lansman Oncesi (Ay 1-3)
+'Yakinda' acilis sayfasi — e-posta listesi topla
+Twitter/X ve LinkedIn'de proje hikayesi anlat (gelistirme gunlukleri)
+Reddit OSINT, netsec, geopolitics toplulularinda gorunurluk
+Bellingcat Community Forum'da tanitim ve ilk kullanici toplulugu
+
+12.2 MVP Lansmanı (Ay 3)
+Product Hunt'ta lansman — OSINT ve harita araclari kategorisi
+Hacker News 'Show HN' gonderisi — teknik topluluk
+Gazetecilerle ozel demo — belgelenms 5-10 anomali ic icerik olarak paylas
+GitHub'a acik kaynak olarak yayinlama
+
+12.3 Buyume (Ay 4-6)
+Bellingcat, OCCRP, DFRLab gibi arastirma kuruluslariyla ortaklik
+Akademik konferanslar: ICCWS, IEEE S&P, CCC (Chaos Communication Congress)
+Medya PR: Guardian, Reuters, Al Jazeera investigative desk'lere demo
+YouTube kanal: Her ay bir 'dikkat cekici kesfin' derinlemesine analizi
+
+
+13. Etik Cerceve ve Sorumluluk
+
+GhostBuilding, yalnizca acik kaynak ve kamuya acik verilerle calismaktadir. Projenin etik temelleri asagidaki ilkelere dayanmaktadir:
+
+13.1 Veri Toplama Ilkeleri
+Yalnizca kamuya acik API ve acik lisansli veriler kullanilir.
+Hicbir ozel mulkiyet veya kisisel veya veri toplanmaz.
+API kullanim sartlari tam uyumlulukla takip edilir.
+Scraping yapilan hicbir kaynak zorlanmaz; rate limiting'e saygi gosterilir.
+
+13.2 Icerik Politikasi
+Askeri personel ya da kimlikler hakkinda bireysel bilgi yayimlanmaz.
+Aktif askeri operasyonlara ait gercek zamanli konumlar paylasimaz.
+Her anomali 'dogrulama bekleniyor' etiketiyle sunulur; kesin hukum verilmez.
+Kullanicilara gizlilik ve sorumluluk konusunda acik bilgi saglanir.
+
+13.3 Seffaflik
+Tum tespit algoritmalari GitHub'da acik kaynak olarak yayimlanir.
+Her anomali icin kullanilan veri kaynagi ve tespit yontemi acikca belirtilir.
+Yanlis tespit raporlari kolayca yapilabilir ve seffaf sekilde islenir.
+
+
+Ek A: Teknik Gereksinimler ve Bagimliliklar
+
+A.1 Sistem Gereksinimleri
+Python 3.12+
+Node.js 20+ (frontend gelistirme)
+Docker 24+ ve Docker Compose v2
+PostgreSQL 16 + PostGIS 3.4
+Redis 7+
+4GB+ RAM (gelistirme), 8GB+ (uretim)
+
+A.2 Python Kutuphaneleri
+
+A.3 Temel API Endpointleri

@@ -375,6 +375,84 @@ async def register(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# ENDPOINT: GET /auth/verify-email — Email Doğrulama
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/verify-email",
+    response_model=MessageResponse,
+    summary="Email doğrulama",
+    description=(
+        "Kayıt sırasında gönderilen doğrulama token'ı ile email adresini doğrular. "
+        "Token Redis'te 24 saat geçerlidir."
+    ),
+    response_description="Doğrulama sonuç mesajı",
+    tags=["auth"],
+)
+async def verify_email(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """
+    Email doğrulama token'ını doğrular ve kullanıcıyı onaylar.
+
+    1. Redis'ten `email:verify:{token}` key'ini arar
+    2. Kullanıcı ID'sini alır
+    3. `is_verified = True` yapar
+    4. Token'ı siler (tek kullanımlık)
+    """
+    import redis.asyncio as aioredis
+
+    try:
+        r = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+        user_id = await r.get(f"email:verify:{token}")
+
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "invalid_or_expired_token",
+                    "message": "Doğrulama bağlantısı geçersiz veya süresi dolmuş.",
+                },
+            )
+
+        # Kullanıcıyı bul ve doğrula
+        stmt = select(User).where(User.id == user_id)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": "user_not_found",
+                    "message": "Kullanıcı bulunamadı.",
+                },
+            )
+
+        user.is_verified = True
+        await db.commit()
+
+        # Token'ı sil (tek kullanımlık)
+        await r.delete(f"email:verify:{token}")
+        await r.aclose()
+
+        logger.info("Email doğrulandı: user_id=%s", user_id)
+
+        return MessageResponse(message="Email adresiniz başarıyla doğrulandı.")
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Email doğrulama hatası: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Email doğrulama sırasında bir hata oluştu.",
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # ENDPOINT: POST /auth/login — Giriş
 # ═══════════════════════════════════════════════════════════════════════════
 
