@@ -19,25 +19,25 @@ type BadgeVariant =
 
 const variantStyles: Record<BadgeVariant, string> = {
   default:
-    "bg-white/5 text-gray-300 border-white/10",
+    "bg-white/[0.04] text-gray-300 border-white/[0.08]",
   ghost:
-    "bg-ghost/10 text-ghost border-ghost/25",
+    "bg-ghost/10 text-ghost border-ghost/20",
   hidden:
-    "bg-accent/10 text-accent border-accent/25",
+    "bg-accent/10 text-accent border-accent/20",
   censored:
-    "bg-censored/10 text-censored border-censored/25",
+    "bg-censored/10 text-censored border-censored/20",
   discrepancy:
-    "bg-discrepancy/10 text-discrepancy border-discrepancy/25",
+    "bg-discrepancy/10 text-discrepancy border-discrepancy/20",
   success:
-    "bg-emerald-500/10 text-emerald-400 border-emerald-500/25",
+    "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   warning:
-    "bg-yellow-500/10 text-yellow-400 border-yellow-500/25",
+    "bg-amber-500/10 text-amber-400 border-amber-500/20",
   danger:
-    "bg-red-500/10 text-red-400 border-red-500/25",
+    "bg-red-500/10 text-red-400 border-red-500/20",
   info:
-    "bg-blue-500/10 text-blue-400 border-blue-500/25",
+    "bg-blue-500/10 text-blue-400 border-blue-500/20",
   outline:
-    "bg-transparent text-gray-400 border-gray-600",
+    "bg-transparent text-muted border-border",
 };
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ export default function Badge({
       className={cn(
         "inline-flex items-center gap-1.5 font-semibold border rounded-full",
         "transition-colors duration-150",
-        size === "sm" ? "px-2 py-0.5 text-[10px] uppercase tracking-wider" : "px-3 py-1 text-xs",
+        size === "sm" ? "px-2.5 py-0.5 text-[10px] uppercase tracking-wider" : "px-3 py-1 text-xs",
         variantStyles[variant],
         className
       )}
@@ -82,7 +82,7 @@ export default function Badge({
                   : variant === "success"
                   ? "bg-emerald-400"
                   : variant === "warning"
-                  ? "bg-yellow-400"
+                  ? "bg-amber-400"
                   : "bg-current"
               )}
             />
@@ -97,7 +97,7 @@ export default function Badge({
                 : variant === "success"
                 ? "bg-emerald-400"
                 : variant === "warning"
-                ? "bg-yellow-400"
+                ? "bg-amber-400"
                 : "bg-current"
             )}
           />

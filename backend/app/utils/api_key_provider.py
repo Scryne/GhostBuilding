@@ -140,6 +140,10 @@ _PROVIDERS: dict[str, APIKeyProvider] = {
         name="Bing Maps",
         env_var="BING_MAPS_API_KEY",
     ),
+    "mapbox": EnvironmentKeyProvider(
+        name="Mapbox",
+        env_var="MAPBOX_API_KEY",
+    ),
     "sentinel_hub": EnvironmentKeyProvider(
         name="Sentinel Hub",
         env_var="SENTINEL_HUB_CLIENT_ID",
@@ -156,7 +160,7 @@ def get_api_key_provider(name: str) -> APIKeyProvider:
     İsme göre API key provider döndürür.
 
     Args:
-        name: Provider adı (google_maps, bing_maps, sentinel_hub, openai).
+        name: Provider adı (google_maps, mapbox, sentinel_hub, openai).
 
     Returns:
         APIKeyProvider instance.

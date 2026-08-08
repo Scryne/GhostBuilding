@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # API KEYS (Optional)
     GOOGLE_MAPS_API_KEY: Optional[str] = None
-    BING_MAPS_API_KEY: Optional[str] = None
+    MAPBOX_API_KEY: Optional[str] = None
     SENTINEL_HUB_CLIENT_ID: Optional[str] = None
     SENTINEL_HUB_CLIENT_SECRET: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None

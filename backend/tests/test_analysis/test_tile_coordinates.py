@@ -36,7 +36,7 @@ class TestLatLngToTile:
         assert isinstance(x, int)
         assert isinstance(y, int)
         assert x == 19021
-        assert y == 11826
+        assert y == 12284
 
     def test_origin_zoom_0(self):
         """(0, 0) zoom 0 → (0, 0, 0)."""

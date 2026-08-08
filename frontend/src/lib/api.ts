@@ -30,8 +30,12 @@ import type {
 
 // ── Base URL ──────────────────────────────────────────────────────────────
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const isServer = typeof window === "undefined";
+const _customUrl = process.env.NEXT_PUBLIC_API_URL;
+// Sunucu taraflı çalışırken, eğer path relative (/api...) ise container-to-container haberleşme için absolute url yapıyoruz.
+const API_BASE_URL = isServer && _customUrl?.startsWith("/")
+  ? `http://backend:8000${_customUrl}`
+  : _customUrl || "http://localhost:8000/api/v1";
 
 // ── Token Yönetimi ────────────────────────────────────────────────────────
 

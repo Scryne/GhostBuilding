@@ -36,7 +36,7 @@ class SensitiveDataFilter(logging.Filter):
         # API key pattern'leri — ortam değişkeni değerleri
         (
             re.compile(
-                r"(GOOGLE_MAPS_API_KEY|BING_MAPS_API_KEY|OPENAI_API_KEY|"
+                r"(GOOGLE_MAPS_API_KEY|MAPBOX_API_KEY|OPENAI_API_KEY|"
                 r"SENTINEL_HUB_CLIENT_ID|SENTINEL_HUB_CLIENT_SECRET|"
                 r"MINIO_ACCESS_KEY|MINIO_SECRET_KEY|SECRET_KEY)"
                 r"\s*[=:]\s*\S+",

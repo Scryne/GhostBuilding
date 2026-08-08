@@ -20,7 +20,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let dynamicRoutes: MetadataRoute.Sitemap = [];
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    const isServer = typeof window === 'undefined';
+    const apiUrl = isServer && rawApiUrl.startsWith('/') ? `http://backend:8000${rawApiUrl}` : rawApiUrl;
+    
     // Sadece VERIFIED olan anomalileri sitemap'e dahil et
     const res = await fetch(`${apiUrl}/anomalies/?status=VERIFIED&limit=1000`, { 
       next: { revalidate: 3600 * 24 } // günlük yenile

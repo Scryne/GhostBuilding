@@ -149,16 +149,30 @@ async def test_verify_invalid_vote_type(
 
 @pytest.mark.asyncio
 async def test_get_verifications_empty(
-    client: AsyncClient, test_anomaly
+    client: AsyncClient, db_session: AsyncSession
 ):
     """Doğrulama olmayan anomali için boş özet dönmeli."""
+    import uuid
+    from tests.conftest import TestAnomaly
+    
+    empty_anomaly = TestAnomaly(
+        id=str(uuid.uuid4()),
+        lat=40.0,
+        lng=30.0,
+        category="GHOST_BUILDING",
+        title="Empty Anomaly",
+        status="PENDING",
+    )
+    db_session.add(empty_anomaly)
+    await db_session.commit()
+
     response = await client.get(
-        f"/api/v1/anomalies/{test_anomaly.id}/verifications"
+        f"/api/v1/anomalies/{empty_anomaly.id}/verifications"
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["anomaly_id"] == str(test_anomaly.id)
+    assert data["anomaly_id"] == str(empty_anomaly.id)
     assert data["total_votes"] == 0
     assert data["confirm_count"] == 0
     assert data["deny_count"] == 0

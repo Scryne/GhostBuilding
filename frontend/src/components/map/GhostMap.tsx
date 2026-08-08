@@ -9,6 +9,7 @@ import {
   useRef,
   useCallback,
   useState,
+  useEffect,
   createContext,
   useContext,
   type ReactNode,
@@ -24,6 +25,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import AnomalyLayer from "./AnomalyLayer";
 import LayerControls from "./LayerControls";
 import MapControls from "./MapControls";
+import { anomalyApi } from "@/lib/api";
 import ScanProgressToast from "./ScanProgressToast";
 import { AnomalyDetailPanel } from "@/components/anomaly";
 import type { AnomalyCategory, MapViewport } from "@/lib/types";
@@ -170,6 +172,41 @@ export default function GhostMap({ children }: GhostMapProps) {
   }, [handleMouseMove]);
 
   // ── Context Value ───────────────────────────────────────────────────
+
+  // ── Custom Event Listeners ──────────────────────────────────────────
+
+  useEffect(() => {
+    const handleFlyTo = (e: CustomEvent<{ lat: number; lng: number; zoom?: number }>) => {
+      flyTo(e.detail.lat, e.detail.lng, e.detail.zoom);
+    };
+
+    const handleScan = async () => {
+      // Harita merkezini al
+      const map = mapRef.current?.getMap();
+      if (!map) return;
+      const center = map.getCenter();
+      
+      try {
+        const resp = await anomalyApi.startScan({
+          lat: center.lat,
+          lng: center.lng,
+          zoom: map.getZoom(),
+          radius_km: 2, // varsayılan
+        });
+        setActiveScanTaskId(resp.task_id);
+      } catch (err) {
+        console.error("Tarama başlatılamadı:", err);
+      }
+    };
+
+    window.addEventListener("ghostbuilding:flyto", handleFlyTo as EventListener);
+    window.addEventListener("ghostbuilding:scan", handleScan as EventListener);
+
+    return () => {
+      window.removeEventListener("ghostbuilding:flyto", handleFlyTo as EventListener);
+      window.removeEventListener("ghostbuilding:scan", handleScan as EventListener);
+    };
+  }, [flyTo, setActiveScanTaskId]);
 
   const contextValue: MapContextValue = {
     mapRef,
