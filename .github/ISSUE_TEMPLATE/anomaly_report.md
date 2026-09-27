@@ -20,13 +20,12 @@ Please select the closest match:
 **Description**
 Provide details on what you found and why you believe this is an anomaly.
 
-**Providers Checked**
-Which map providers have you checked?
-- [ ] Google Maps
-- [ ] Bing Maps
-- [ ] Yandex Maps
-- [ ] Apple Maps
-- [ ] OpenStreetMap
+**Sources Checked**
+Which imagery sources show the difference?
+- [ ] Esri World Imagery
+- [ ] MapTiler Satellite
+- [ ] IGN ortho (France)
+- [ ] Other (name it; official, documented sources only)
 
 **Screenshots / Evidence**
 Attach screenshots isolating the discrepancy.

@@ -1,109 +1,170 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Scryne/GhostBuilding/main/public/logo.png" alt="GhostBuilding Logo" width="120" height="120" />
-</p>
+# GhostBuilding
 
-<h1 align="center">👻 GhostBuilding</h1>
+**Aynı konumun farklı uydu kaynaklarındaki karolarını karşılaştırıp sıradan konumlara göre sıra
+dışı olan farkları işaretleyen, her bulguyu kanıt karolarıyla gösteren OSINT harita aracı.**
 
-<p align="center">
-  <strong>Global OSINT Mapping Intelligence Platform</strong><br/>
-  <em>Detect censored areas, ghost buildings, and hidden structures across global map providers.</em>
-</p>
+Hassas tesisler uydu görüntülerinde çoğu zaman gizlenir: bir sağlayıcı bölgeyi bulanıklaştırır,
+bir başkası mozaikler, üçüncüsü eski bir çekimi gösterir. GhostBuilding bir koordinat için
+Esri World Imagery, MapTiler Satellite ve (Fransa'da) IGN ortofoto karolarını aynı zoom'da indirir,
+aralarındaki piksel ve keskinlik farkını ölçer, bu farkı **sıradan konumlardan ölçülmüş bir taban
+dağılımıyla** kıyaslar. Puan bir "gizli tesis olasılığı" değildir; sinyalin sıradan konumların
+yüzde kaçından sıra dışı olduğunu söyler. Her bulgu karoları yan yana, gerekçesi ve eşik değerleriyle
+birlikte gösterilir; son kararı topluluk doğrulaması verir.
 
-<p align="center">
-  <a href="https://github.com/Scryne/GhostBuilding/actions"><img src="https://img.shields.io/github/actions/workflow/status/Scryne/GhostBuilding/ci.yml?branch=main&style=flat-square" alt="Build Status" /></a>
-  <a href="https://github.com/Scryne/GhostBuilding/releases"><img src="https://img.shields.io/github/v/release/Scryne/GhostBuilding?style=flat-square" alt="Version" /></a>
-  <a href="https://github.com/Scryne/GhostBuilding/stargazers"><img src="https://img.shields.io/github/stars/Scryne/GhostBuilding?style=flat-square" alt="Stars" /></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT" /></a>
-</p>
+![Île Longue, Esri World Imagery altlığında: denizaltı üssü bulanık bir yamayla örtülü](docs/screenshots/harita-ile-longue-esri.webp)
 
-<p align="center">
-  <strong><a href="https://ghostbuilding.io">Live Demo</a></strong> •
-  <strong><a href="docs/api.md">API Docs</a></strong> •
-  <strong><a href="docs/algorithms.md">How It Works</a></strong> •
-  <strong><a href="CONTRIBUTING.md">Contribute</a></strong>
-</p>
+Île Longue (Fransa'nın nükleer denizaltı üssü) aynı zoom'da iki kaynakta iki farklı yöntemle
+gizleniyor: Esri'de bulanık bir yama, MapTiler'da piksel mozaiği.
 
----
+![Aynı konum MapTiler Satellite altlığında: ada piksel mozaiğiyle örtülü](docs/screenshots/harita-ile-longue-maptiler.webp)
 
-## 🔎 Overview
+## Ne yapar
 
-GhostBuilding is an advanced open-source intelligence (OSINT) platform that systematically detects and highlights discrepancies between major map providers (Google Maps, OpenStreetMap, Bing Maps, Yandex). 
+| | |
+|---|---|
+| **Tarama** | Bir koordinat (ya da ızgara) için tüm uygun kaynaklardan z16 karo indirir. Tarama giriş ister, çünkü her tarama MapTiler kotasından harcar. Celery kuyruğunda çalışır, ilerleme bildirilir. |
+| **Görüntü farkı** | Karolar aynı boyuta ölçeklenir; SSIM, mutlak fark ve histogram ayrışmasıyla "en farklı iki kaynak" bulunur. |
+| **Sansür (bulanıklık)** | Laplacian varyansı, FFT'de yüksek frekans kaybı ve bölgesel bulanıklık haritasıyla bir kaynağın diğerlerinden belirgin biçimde bulanık olup olmadığı ölçülür. Her kural isabeti gerekçe olarak yazılır ve puan katkısını taşır. |
+| **Puanlama** | Ham ölçümler taban dağılımına göre 0–100'e çevrilir: taban p90'a kadar 0, p90→p99 arası 0→50, p99 üstü 50→100. 50 çizgisi "sıradan konumların %99'u" demektir. |
+| **Bulgu** | Eşiği geçen sonuç PostGIS'e yazılır; aynı konum yeniden tarandığında kayıt güncellenir (tarama sayısı artar), kopya üretilmez. |
+| **Doğrulama** | Kayıtlı kullanıcılar oy verir. 10+ etkin oy ve %75 onayla bulgu doğrulanır, 5+ oy ve %25 altı onayla reddedilir. İsabetli oy güven puanını artırır; güven puanı 55'i geçen kullanıcının oyu iki kat sayılır. |
 
-By comparing pixel architectures, geospatial metadata, and historical archives, GhostBuilding automatically identifies:
-- 🏚️ **Ghost Buildings** — Structures registered in public metadata (OSM) but invisible in satellite imagery.
-- 🔒 **Hidden Structures** — Classified or secret buildings visible in satellite imagery but absent from official maps.
-- 🚫 **Censored Areas** — Systematically blurred, pixelated, or intentionally obscured regions.
-- 🔍 **Image Discrepancies** — Significant pixel-level anomalies or manipulation between provider tiles.
+Kapalı sinyaller gizlenmez, gerekçesiyle listelenir. Esri Wayback sürümlerinden zaman serisi
+çıkaran analizci (`TimeSeriesAnalyzer`, aynı görüntüyü döndüren sürümleri eler) yazılı ve test
+edilmiş durumda, ama henüz tarama akışına bağlı değil. OSM binaları ile uydu görüntüsünü
+karşılaştıran "hayalet bina / gizli yapı" analizi, hava görüntüsünde bina tanıyan ağırlıklar
+(`BUILDING_DETECTOR_WEIGHTS`) verilmedikçe kapalıdır. Genel amaçlı bir COCO modeli yukarıdan bina
+tanımaz; açık olsaydı sonuç uydurma olurdu.
 
-<p align="center">
-  <!-- Demo GIF Placeholder -->
-  <img src="https://raw.githubusercontent.com/Scryne/GhostBuilding/main/public/demo.gif" alt="GhostBuilding Demo" width="800" />
-</p>
+## Nasıl ölçüldü
 
----
+Eşikler elle seçilmedi, `backend/scripts/calibrate_diff.py` ile ölçüldü:
 
-## ✨ Features
+| Taban | Konum | Piksel farkı p90 / p99 | Sansür skoru p90 / p99 |
+|---|---|---|---|
+| Esri + MapTiler | 40 sıradan konum, z16 ([veri](docs/calibration-z16.json)) | %80,1 / %87,6 | 15,5 / 20 |
+| Esri + MapTiler + IGN | 20 sıradan Fransız konumu ([veri](docs/calibration-z16-fransa.json)) | %88,8 / %99,0 | 1,5 / 19,1 |
 
-- 🛰️ **Cross-Provider Comparison:** Simultaneously download and compare tiles from 4+ providers.
-- 🧮 **Advanced Computer Vision:** Laplacian variance for blur detection and SSIM for pixel diffs.
-- 🗺️ **Geospatial Cross-Referencing:** Compare OpenStreetMap building data with YOLO v8 satellite detections.
-- 🌐 **Interactive Global Map:** Built with MapLibre GL JS and tailored for intense intelligence gathering.
-- 👥 **Community Verification:** Weighted voting system with trust scores for anomaly confirmation.
-- 🚀 **Asynchronous Scanning:** Celery-powered background grid scanning with progress tracking.
+Üç kaynakta ölçü "en farklı çift" olduğu için dağılım yukarı kayar; bu yüzden kaynak sayısına göre
+ayrı taban kullanılır. Kalibrasyondan önceki eşikler (%15 / %30) sıradan 40 konumun 39'unu
+işaretliyordu.
 
----
+**Referans taraması** (`backend/scripts/seed_data.py`, [rapor](docs/reference-scan.json)): kamuya
+açık kaynaklarda adı geçen 20 askeri/nükleer tesis ve 7 sıradan kontrol konumu aynı motordan
+geçirildi. 3 tesis işaretlendi, kontrollerin hiçbiri işaretlenmedi:
 
-## ⚡ Quick Start
+| Konum | Bulgu | Puan |
+|---|---|---|
+| Avord hava üssü (BA 702), Fransa | Görüntü farkı (MapTiler ↔ IGN, %99,8) | 88,9 |
+| Volkel hava üssü, Hollanda | Görüntü farkı (Esri ↔ MapTiler, %91,7) | 66,6 |
+| Île Longue, Fransa | Sansürlü alan (Esri bulanık, 2 kaynak keskin) | 53,1 |
 
-Get GhostBuilding running on your machine in under 3 minutes using Docker.
+Area 51, Pine Gap, Dimona gibi tesisler işaretlenmedi: bu kaynaklarda o konumlar gizlenmiyor ya da
+fark sıradan konumların içinde kalıyor. Demo verisi yalnız bu taramadan gelir; elle yazılmış skor yoktur.
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/Scryne/GhostBuilding.git
-cd GhostBuilding
+## Mimari
 
-# 2. Configure environment
-cp .env.example .env
-
-# 3. Start the entire stack
-docker compose up -d
+```
+            ┌──────────── Next.js 16 (MapLibre) ─────────────┐
+            │ harita · bulgu paneli · keşfet · doğrulama     │
+            └──────────────────────┬─────────────────────────┘
+                                   │ REST /api/v1
+┌──────────────────────────────────▼──────────────────────────────────┐
+│ FastAPI ── Redis (önbellek, hız sınırı) ── PostgreSQL + PostGIS     │
+│    │                                                                │
+│    └─► Celery: scan_coordinate / scan_grid                          │
+│          karo indir (Esri, MapTiler, IGN) ─► piksel farkı ─┐        │
+│                                           ─► bulanıklık ───┼─► taban│
+│                                                            │  puanı │
+│                                                            ▼        │
+│                                            bulgu (upsert) + görsel  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-Once running, navigate to:
-- **Frontend Dashboard:** [http://localhost:3000](http://localhost:3000)
-- **Backend API:** [http://localhost:8000/docs](http://localhost:8000/docs)
+Backend: FastAPI, SQLAlchemy 2 (async), GeoAlchemy2, Celery, OpenCV, scikit-image, PyJWT.
+Frontend: Next.js 16, React 19, MapLibre GL 6, Tailwind. Tasarım dili [DESIGN.md](DESIGN.md)'de.
 
-> For manual deployment or production setup, see our [Deployment Guide](docs/deployment.md).
+## Veri kaynakları ve kullanım koşulları
+
+| Kaynak | Kullanım | Koşul |
+|---|---|---|
+| Esri World Imagery | Analiz karosu + altlık | Esri, Maxar, Earthstar Geographics atfı |
+| Esri Wayback | Tarihsel sürümler | Esri atfı |
+| MapTiler Satellite | Analiz karosu + altlık | API anahtarı (`MAPTILER_API_KEY`), © MapTiler atfı |
+| IGN Géoplateforme ortofoto | Fransa'da üçüncü kaynak + altlık | Licence Ouverte Etalab 2.0, anahtarsız |
+| OpenStreetMap / CARTO | Koyu harita altlığı, (açıksa) bina verisi | ODbL, © OpenStreetMap contributors |
+
+Tüm istekler projeyi tanıtan sabit bir User-Agent ile yapılır. Atıflar her karonun yanında
+gösterilir. Ayrıntı: [docs/data-sources.md](docs/data-sources.md).
+
+## Yapay zekâ ile nasıl geliştirildi
+
+İlk sürüm (Nisan 2026) bir proje planı dokümanından yapay zekâ ajanlarıyla iki günde, beş fazda
+kuruldu. Eylül 2026'daki denetim, çalışan her parçanın gerçekten neyi ölçtüğünü sordu. Ortaya
+çıkanlar:
+
+- Eşikler hiç ölçülmemişti: sıradan konumların %97'si "anomali" sayılıyordu.
+- Karolar merkezden kırpılarak hizalanıyordu. Bu yüzden farklı çözünürlükteki kaynaklar
+  kıyaslanamıyordu.
+- Piksel farkı bir yerde OSM harita çizimini uydu fotoğrafıyla karşılaştırıyordu.
+- Görüntüler, sağlayıcıların resmî olmayan uçlarından rastgele User-Agent'la çekiliyordu.
+- Demo verisi elle yazılmış güven skorları taşıyordu.
+- Testler SQLite üzerinde, kopya modellerle koşuyordu.
+
+Düzeltme de yapay zekâ ile yapıldı, ama ölçüme bağlandı. Kaynaklar resmî uçlara taşındı,
+kalibrasyon betiği yazıldı, eşikler taban dağılımından türetildi. Demo verisi gerçek taramayla
+üretildi, her davranış değişikliği bir regresyon testiyle sabitlendi (230 test). Arayüz "neden
+işaretlendi" sorusunu kanıtla cevaplayacak biçimde yeniden kuruldu.
+
+## Kurulum
+
+```bash
+git clone https://github.com/Scryne/GhostBuilding.git
+cd GhostBuilding
+cp .env.example .env          # MAPTILER_API_KEY ve NEXT_PUBLIC_MAPLIBRE_TOKEN'ı doldurun
+docker compose up -d
+docker compose exec backend alembic upgrade head
+docker compose exec backend python scripts/seed_data.py      # referans taraması, birkaç dakika
+```
+
+Arayüz http://localhost:3000, API belgeleri http://localhost:8000/docs.
+
+Yerel geliştirme (Docker'sız backend):
+
+```bash
+cd backend
+python -m venv .venv && .venv/Scripts/activate        # Linux/macOS: source .venv/bin/activate
+pip install -r requirements-dev.txt                    # bina dedektörü: requirements-detector.txt
+pytest -q && ruff check .
+```
+
+```bash
+cd frontend
+npm ci
+npm run dev                    # kök .env'deki NEXT_PUBLIC_* değerlerini okur
+npm run lint && npm run typecheck && npm run build
+```
+
+## Durum
+
+- Backend 230 test, ruff temiz, bağımlılık denetimi 0 açık. Frontend lint, tip ve üretim derlemesi
+  temiz, üretim bağımlılıklarında 0 açık. CI her push'ta bunların hepsini koşar ve Docker imajlarını derler.
+- Lighthouse (mobil): erişilebilirlik, en iyi uygulama ve SEO iki sayfada 100. Performans keşfette 84,
+  haritada 54: kabuk, tam ekran WebGL haritayla birlikte istemcide yükleniyor.
+- Testler SQLite ile koşar; PostGIS'e özgü sorgular (mekânsal filtre, yakınlık) yalnız uçtan uca
+  çalıştırmada doğrulandı.
+- Staging dağıtım iş akışı elle tetiklenir; henüz bir sunucu yok.
+
+## Ekranlar
+
+| | |
+|---|---|
+| ![Bulgu sayfası: kaynak karoları, puan, gerekçe](docs/screenshots/bulgu-ile-longue.webp) | ![Üst üste karşılaştırma](docs/screenshots/karsilastir-avord.webp) |
+| Bulgu sayfası: karolar yan yana, puan tabana göre, gerekçe maddeleri puan katkılarıyla | İki kaynağı ayırıcıyla üst üste karşılaştırma |
+| ![Keşfet](docs/screenshots/kesfet.webp) | |
+| Keşfet: bulgular, çalışan üç filtre ve sıralama | |
 
 ---
 
-## 📚 Documentation
-
-The technical details of the project are thoroughly documented in the `docs/` folder:
-
-- [API Documentation](docs/api.md)
-- [Detection Algorithms Explained](docs/algorithms.md)
-- [Production Deployment Guide](docs/deployment.md)
-- [Data Sources & Licensing](docs/data-sources.md)
-
----
-
-## 🤝 Contributing
-
-We welcome contributions from the OSINT and developer communities! Whether it's adding a new map provider, improving the computer vision models, or reporting a bug, please join us.
-
-1. Read our [Contribution Guidelines](.github/CONTRIBUTING.md).
-2. Review our [Code of Conduct](CODE_OF_CONDUCT.md).
-3. Check the open issues or create a new one using our templates.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-> **Disclaimer:** This tool is for educational, research, and journalistic purposes. It relies on public APIs and open data sources. Please respect the Terms of Service of individual map providers.
-
-<p align="center">
-  <sub>Built for the truth. Uncover the hidden.</sub>
-</p>
+Araştırma, gazetecilik ve eğitim amaçlıdır. Uydu görüntüsündeki bir fark tek başına bir tesisin
+varlığını ya da niteliğini kanıtlamaz; bulgular insan doğrulaması içindir.
