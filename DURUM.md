@@ -35,7 +35,7 @@
 - Repoda LICENSE dosyası yok (eski README "MIT" diyordu; yeni README lisans iddiası taşımıyor).
 - Kullanılmayan bileşenler: `FeaturedAnomalies`, `LayerControls`, `TimelineChart`, `SearchBar`.
   Silinsin mi?
-- `PORTFOLYO-BRIFING.md`, `proje_plani.txt`, `GhostBuilding_Proje_Plani.docx`, `wrangler.toml`
+- `proje_plani.txt`, `GhostBuilding_Proje_Plani.docx`, `wrangler.toml`
   (Cloudflare yapılandırması, kullanılmıyor) repoda duruyor.
 - `app/utils/api_key_provider.py` ölü kod.
 
