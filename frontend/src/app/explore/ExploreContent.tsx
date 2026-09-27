@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useAnomalyList } from "@/hooks/useAnomaly";
 import { AnomalyStatus } from "@/lib/types";
@@ -43,7 +43,6 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function ExploreContent() {
-  const router = useRouter();
 
   // ── State ──────────────────────────────────────────────────────────
   const [filters, setFilters] = useState<ExploreFilters>(DEFAULT_FILTERS);
@@ -114,18 +113,19 @@ export default function ExploreContent() {
         <div className="glass-panel-strong rounded-none border-0 border-b border-white/[0.04]">
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex items-center gap-3 sm:gap-4">
             {/* Logo + Geri */}
-            <button
-              onClick={() => router.push("/")}
+            <Link
+              href="/"
+              aria-label="GhostBuilding ana harita"
               className="flex items-center gap-2.5 group flex-shrink-0"
               id="nav-logo-btn"
             >
               <div className="p-1.5 bg-secondary/10 rounded-lg border border-secondary/20 group-hover:bg-secondary/15 transition-colors">
-                <ShieldAlert className="w-5 h-5 text-secondary" />
+                <ShieldAlert className="w-5 h-5 text-secondary" aria-hidden />
               </div>
-              <h1 className="text-base font-bold text-gradient-brand tracking-tight whitespace-nowrap hidden sm:block">
+              <span className="text-base font-bold text-gradient-brand tracking-tight whitespace-nowrap hidden sm:block">
                 GhostBuilding
-              </h1>
-            </button>
+              </span>
+            </Link>
 
             {/* Ayırıcı */}
             <div className="w-px h-6 bg-white/[0.06] hidden sm:block" />
@@ -152,8 +152,9 @@ export default function ExploreContent() {
             </button>
 
             {/* Haritaya dön */}
-            <button
-              onClick={() => router.push("/")}
+            <Link
+              href="/"
+              aria-label="Haritaya dön"
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium",
                 "bg-secondary/10 text-secondary border border-secondary/20",
@@ -161,9 +162,9 @@ export default function ExploreContent() {
               )}
               id="back-to-map-btn"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-3.5 h-3.5" aria-hidden />
               <span className="hidden sm:inline">Harita</span>
-            </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -262,12 +263,13 @@ export default function ExploreContent() {
                       setSortBy(opt.value);
                       setPage(1);
                     }}
+                    aria-pressed={sortBy === opt.value}
                     className={cn(
-                      "px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider",
-                      "transition-all duration-200",
+                      "px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider",
+                      "transition-colors duration-200",
                       sortBy === opt.value
-                        ? "bg-secondary/15 text-secondary"
-                        : "text-gray-500 hover:text-gray-300 hover:bg-white/[0.02]"
+                        ? "bg-secondary/20 text-foreground"
+                        : "text-muted hover:text-foreground hover:bg-white/[0.04]"
                     )}
                     id={`sort-${opt.value}`}
                   >

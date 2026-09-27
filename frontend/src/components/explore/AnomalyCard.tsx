@@ -68,7 +68,7 @@ export default function AnomalyCard({ anomaly, onClick, className }: AnomalyCard
       <div className="space-y-2.5 p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-foreground">{heading}</h3>
+            <h2 className="truncate text-sm font-semibold text-foreground">{heading}</h2>
             {anomaly.title && <p className="mt-0.5 truncate text-xs text-muted">{anomaly.title}</p>}
           </div>
           <span className="shrink-0 font-mono text-base font-bold tabular-nums text-foreground">

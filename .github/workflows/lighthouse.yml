@@ -1,40 +1,40 @@
-name: Lighthouse CI
+name: Lighthouse
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main]
+    paths: ["frontend/**", ".github/workflows/lighthouse.yml"]
   pull_request:
-    branches: [ main, master ]
+    branches: [main]
+    paths: ["frontend/**"]
+  workflow_dispatch:
 
+permissions:
+  contents: read
+
+# Erisilebilirlik, en iyi uygulama ve SEO >= 0.9 bloke eder. Performans yalniz uyari:
+# tam ekran WebGL harita (MapLibre) mobil kisitlamada ~0.55 olculdu (kabuk harita
+# baglamiyla birlikte istemcide yukleniyor); kesfet sayfasi ~0.85.
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
-        working-directory: ./frontend
+      - working-directory: frontend
         run: npm ci
 
-      - name: Build Next.js app
-        working-directory: ./frontend
+      - working-directory: frontend
         run: npm run build
 
-      - name: Install Next.js globally for production server
-        run: npm install -g next
-
-      - name: Run Lighthouse CI
-        uses: treosh/lighthouse-ci-action@v12
+      - uses: treosh/lighthouse-ci-action@12.6.2
         with:
-          urls: |
-            http://localhost:3000/
-            http://localhost:3000/explore
           configPath: ./frontend/lighthouserc.json
           uploadArtifacts: true
           temporaryPublicStorage: true

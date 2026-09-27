@@ -201,6 +201,7 @@ function TopBar() {
         <nav className="flex shrink-0 items-center gap-1">
           <Link
             href="/explore"
+            aria-label="Keşfet"
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-muted hover:bg-white/[0.06] hover:text-foreground"
           >
             <Compass className="size-4" aria-hidden />
@@ -209,6 +210,7 @@ function TopBar() {
           {isAuthenticated && user ? (
             <Link
               href={`/profile/${user.username}`}
+              aria-label={`Profil: ${user.username}`}
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-muted hover:bg-white/[0.06] hover:text-foreground"
             >
               <User className="size-4" aria-hidden />
@@ -217,6 +219,7 @@ function TopBar() {
           ) : (
             <Link
               href="/auth/login"
+              aria-label="Giriş"
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-muted hover:bg-white/[0.06] hover:text-foreground"
             >
               <LogIn className="size-4" aria-hidden />

@@ -8,6 +8,7 @@ import ExploreContent from "./ExploreContent";
 
 export const metadata: Metadata = {
   title: "Keşfet",
+  alternates: { canonical: "/explore" },
   description:
     "GhostBuilding anomali veritabanını filtreleyin, arayın ve keşfedin. Hayalet yapılar, sansürlü alanlar ve görüntü farklılıkları.",
 };
