@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Optional building detector (OSM <-> imagery comparison). Pulls in PyTorch (~2 GB).
+# Only useful together with BUILDING_DETECTOR_WEIGHTS: YOLO weights trained on building
+# footprints in aerial imagery. A general COCO model cannot recognise buildings from above.
+ultralytics==8.1.47

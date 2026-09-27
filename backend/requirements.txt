@@ -1,33 +1,27 @@
-fastapi==0.110.0
-uvicorn==0.27.1
+fastapi==0.141.1
+uvicorn==0.54.0
 sqlalchemy==2.0.27
 asyncpg==0.29.0
 geoalchemy2==0.14.4
 redis[hiredis]==5.0.3
 celery==5.3.6
 pydantic-settings==2.2.1
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 psycopg2-binary==2.9.9
 alembic==1.13.1
 httpx[http2]==0.27.0
-Pillow==10.3.0
+Pillow==12.3.0
 numpy==1.26.4
 opencv-python-headless==4.9.0.80
 scikit-image==0.23.2
 minio==7.2.5
 aiofiles==23.2.1
-ultralytics==8.1.47
-python-jose[cryptography]==3.3.0
+PyJWT==2.15.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.1.2
 email-validator==2.1.1
 
 # Monitoring & Observability
 structlog==24.1.0
-sentry-sdk[fastapi,celery,sqlalchemy]==1.43.0
+sentry-sdk[fastapi,celery,sqlalchemy]==1.45.1
 prometheus-client==0.20.0
-
-# Test Dependencies
-pytest==8.1.1
-pytest-asyncio==0.23.5
-aiosqlite==0.20.0

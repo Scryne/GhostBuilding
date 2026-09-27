@@ -15,15 +15,12 @@ from __future__ import annotations
 
 import logging
 import math
-import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from PIL import Image
 
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +31,6 @@ logger = logging.getLogger(__name__)
 # YOLO model ayarları
 YOLO_MODEL_NAME: str = "yolov8n.pt"
 YOLO_CONFIDENCE_THRESHOLD: float = 0.4
-YOLO_BUILDING_CLASS_ID: int = 12       # COCO dataset: class 12 ≈ building ilişkili
 YOLO_IOU_NMS_THRESHOLD: float = 0.45   # Non-maximum suppression IoU eşiği
 
 # Ghost building / Hidden structure eşikleri

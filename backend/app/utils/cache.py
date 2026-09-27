@@ -1,6 +1,6 @@
 import json
 import hashlib
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 from functools import wraps
 from redis.asyncio import Redis, from_url
 from app.config import settings

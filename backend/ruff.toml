@@ -1,0 +1,9 @@
+# Ruff yapılandırması. Eskiden yoktu ve CI ruff'ı sürüm sabitlemeden kuruyordu: ruff'ın
+# varsayılan kural kümesi genişleyince proje kod değişmeden 815 bulguyla kırmızıya düştü
+# (2026-08-08). Kurallar burada, sürüm CI'da sabit — ikisi birlikte değişir.
+target-version = "py312"
+line-length = 120
+
+[lint]
+# Ruff'ın klasik varsayılanı: sözdizimi, tanımsız ad, kullanılmayan import/değişken.
+select = ["E4", "E7", "E9", "F"]

@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import redis.asyncio as redis
 
 # Import configs and DB settings
@@ -142,6 +144,12 @@ api_v1_router.include_router(verifications.router, prefix="/anomalies", tags=["v
 
 # Finalize the inclusion into the main app object
 app.include_router(api_v1_router)
+
+# Anomali kanıt görselleri (motorun kaydettiği sağlayıcı karoları). Yalnız bu alt klasör
+# açılır; STORAGE_ROOT'un geri kalanı (önbellek, ara çıktılar) servis edilmez.
+ANOMALY_MEDIA_DIR = Path(settings.STORAGE_ROOT) / "anomaly_images"
+ANOMALY_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/media/anomaly_images", StaticFiles(directory=ANOMALY_MEDIA_DIR), name="anomaly-media")
 
 @app.get("/", include_in_schema=False)
 def read_root():

@@ -29,7 +29,8 @@ from typing import Any, Dict, Optional
 import redis.asyncio as aioredis
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError  # python-jose bakımsız ve düzeltilmemiş açık taşıyor
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -8,7 +8,6 @@ test eder. Tüm harici bağımlılıklar mock'lanmıştır.
 from __future__ import annotations
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 
 from tests.conftest import auth_header

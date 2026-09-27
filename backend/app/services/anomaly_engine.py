@@ -19,18 +19,20 @@ Pipeline sırası:
 
 from __future__ import annotations
 
-import io
 import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from PIL import Image
 
 from app.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.enums import AnomalyCategory, AnomalyStatus
+from app.services.analyzers.blur_detector import CENSORSHIP_BASELINE_P90, censorship_to_score, tr_decimal
+from app.services.analyzers.pixel_diff import diff_baseline, diff_to_score
+from app.services.tile_fetcher import provider_name
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +50,21 @@ WEIGHT_HISTORICAL_CHANGE: float = 0.10
 # Minimum güven eşiği — altı DB'ye yazılmaz
 MIN_CONFIDENCE_THRESHOLD: float = 40.0
 
-# Kategori belirleme eşikleri
-BLUR_CENSORSHIP_CATEGORY_THRESHOLD: float = 70.0
-PIXEL_DIFF_HIGH_THRESHOLD: float = 30.0
+# Kategori belirleme: her sinyal taban dağılımına göre 0–100'e ölçeklenir; 50 = sıradan
+# konumların p99'u (scripts/calibrate_diff.py). Kategori, puanı 50'yi AŞAN sinyalden doğar:
+# sansür skoru kaba basamaklıdır ve tabanın %10'u tam p99 değerini (20) alır; eşitlik işaret değildir.
+SIGNAL_FLAG_SCORE: float = 50.0
 
 # Varsayılan analiz yarıçapı (metre)
 DEFAULT_ANALYSIS_RADIUS_M: int = 500
 
-# Sağlayıcı uyumsuzluk eşiği
-PROVIDER_DISAGREEMENT_DIFF_THRESHOLD: float = 15.0
+# Aynı kategoride bu mesafe içindeki reddedilmemiş kayıt "aynı bulgu" sayılır ve güncellenir.
+# Eskiden her tarama yeni satır ekliyordu; 6 saatlik yeniden tarama görevi bulguları çoğaltıyordu.
+DEDUP_RADIUS_M: float = 50.0
+
+# Skora katkı veremeyen sinyaller (neden) — adayın meta verisinde görünür.
+INACTIVE_GEOSPATIAL = "geospatial_mismatch: bina dedektörü tanımlı değil (BUILDING_DETECTOR_WEIGHTS)"
+INACTIVE_HISTORICAL = "historical_change: tarama akışına bağlı değil (Wayback analizcisi hazır, çağrılmıyor)"
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +91,12 @@ class ScoreBreakdown:
     geospatial_mismatch_score: float = 0.0
     historical_change_score: float = 0.0
     weighted_total: float = 0.0
+    raw_max_diff: float = 0.0
+    raw_censorship: float = 0.0
+    # Ham degerin siradan konumlarda (taban p90) nereye kadar normal oldugu; arayuz yanina yazar.
+    raw_max_diff_p90: Optional[float] = None
+    raw_censorship_p90: Optional[float] = None
+    inactive_signals: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """Sözlük temsiline dönüştürür."""
@@ -93,6 +107,11 @@ class ScoreBreakdown:
             "geospatial_mismatch_score": round(self.geospatial_mismatch_score, 2),
             "historical_change_score": round(self.historical_change_score, 2),
             "weighted_total": round(self.weighted_total, 2),
+            "raw_max_diff": round(self.raw_max_diff, 2),
+            "raw_censorship": round(self.raw_censorship, 2),
+            "raw_max_diff_p90": self.raw_max_diff_p90,
+            "raw_censorship_p90": self.raw_censorship_p90,
+            "inactive_signals": list(self.inactive_signals),
             "weights": {
                 "provider_disagreement": WEIGHT_PROVIDER_DISAGREEMENT,
                 "pixel_diff": WEIGHT_PIXEL_DIFF,
@@ -191,17 +210,17 @@ class AnomalyEngine:
     """Tüm analiz modüllerini orkestre ederek anomali kararı veren motor.
 
     Pipeline sırası:
-      1. TileFetcher: Tüm sağlayıcılardan tile görüntüleri
+      1. TileFetcher: Uydu kaynaklarından karolar (Esri, MapTiler)
       2. OSMCollector: OpenStreetMap bina verileri
-      3. SatelliteFetcher: Uydu görüntüsü (Sentinel / GIBS)
-      4. PixelDiffAnalyzer: Sağlayıcılar arası piksel farkı
-      5. BlurDetector: Kasıtlı bulanıklaştırma tespiti
-      6. GeospatialAnalyzer: OSM vs uydu mekansal karşılaştırma
+      3. PixelDiffAnalyzer: Sağlayıcılar arası piksel farkı (taban dağılımına göre puan)
+      4. BlurDetector: Kasıtlı bulanıklaştırma tespiti
+      5. GeospatialAnalyzer: OSM vs görüntü (yalnız BUILDING_DETECTOR_WEIGHTS tanımlıysa)
       7. Ağırlıklı skor hesaplama
       8. Kategori belirleme
       9. Veritabanına yazma
 
-    Güven skoru formülü (ağırlıklı toplam, max 100):
+    Kategori güveni, kategoriyi doğuran sinyalin taban-göreli puanıdır (50 = sıradan
+    konumların p99'u). Ağırlıklı toplam yalnız özet olarak tutulur:
       - provider_disagreement × 0.30
       - pixel_diff × 0.25
       - blur_censorship × 0.20
@@ -234,6 +253,8 @@ class AnomalyEngine:
         """
         self._radius_m = radius_m
         self._min_confidence = min_confidence
+        # Son analiz çağrısının özeti (tarama görevi ilerleme/sonuç için okur)
+        self.last_run: Dict[str, Any] = {}
 
     # ------------------------------------------------------------------ #
     # analyze — Ana pipeline
@@ -279,12 +300,18 @@ class AnomalyEngine:
         # --- 1. Tile'lari cek ---
         provider_tiles = await self._fetch_provider_tiles(lat, lng, zoom)
 
-        # --- 2. OSM bina verisini cek ---
-        osm_buildings = await self._fetch_osm_buildings(lat, lng)
+        # --- 2. OSM bina verisi (yalniz mekansal analiz aciksa) ---
+        # Dedektor yokken OSM verisi hicbir sinyale girmez; kamuya acik Overpass'a
+        # gereksiz (tarama yaricapi 5 km'ye kadar) sorgu atilmaz.
+        osm_buildings: List[Any] = []
+        if settings.BUILDING_DETECTOR_WEIGHTS:
+            osm_buildings = await self._fetch_osm_buildings(lat, lng)
 
-        # --- 3. Uydu goruntusunu cek ---
-        satellite_result = await self._fetch_satellite_image(lat, lng, zoom)
-        satellite_image = satellite_result.get("image") if satellite_result else None
+        # --- 3. Bina karsilastirmasi icin goruntu ---
+        # Dedektor, sagladigi karo ile ayni cografi sinirlara sahip yuksek cozunurluklu
+        # goruntu ister: Esri karosu (z16 ~2 m/px). Sentinel/GIBS (10–250 m/px) bina
+        # ayirt edemez; eskiden buraya o veriliyordu.
+        satellite_image = provider_tiles.get("esri")
 
         # --- 4. Pixel diff analizi ---
         pixel_diff_result = await self._run_pixel_diff(provider_tiles)
@@ -292,10 +319,12 @@ class AnomalyEngine:
         # --- 5. Blur tespiti ---
         blur_result = await self._run_blur_detection(provider_tiles)
 
-        # --- 6. Geospatial analiz ---
-        geospatial_result = await self._run_geospatial_analysis(
-            lat, lng, zoom, osm_buildings, satellite_image
-        )
+        # --- 6. Geospatial analiz (yalniz bina dedektoru tanimliysa) ---
+        geospatial_result = None
+        if settings.BUILDING_DETECTOR_WEIGHTS:
+            geospatial_result = await self._run_geospatial_analysis(
+                lat, lng, zoom, osm_buildings, satellite_image
+            )
 
         # --- 7. Skor hesaplama ---
         score_breakdown = self._compute_confidence_score(
@@ -341,6 +370,20 @@ class AnomalyEngine:
 
         elapsed_ms = (time.monotonic() - start_time) * 1000
 
+        self.last_run = {
+            "providers": sorted(provider_tiles.keys()),
+            "tile_count": len(provider_tiles),
+            "building_count": len(osm_buildings),
+            "sensitive_count": sum(
+                1 for b in osm_buildings if getattr(b, "is_sensitive", False)
+            ),
+            "candidate_count": len(candidates),
+            "saved_count": saved_count,
+            "skipped_count": skipped,
+            "score_breakdown": score_breakdown.to_dict(),
+            "duration_ms": round(elapsed_ms, 1),
+        }
+
         logger.info(
             "Anomali analizi tamamlandi: %.0f ms, "
             "%d aday, %d kaydedildi, %d atlandi",
@@ -373,7 +416,7 @@ class AnomalyEngine:
             Saglayici adi → PIL Image sozlugu.
             Basarisiz saglayicilar dahil edilmez.
         """
-        from app.services.tile_fetcher import TileFetcher, TileProvider
+        from app.services.tile_fetcher import TileFetcher, imagery_providers
 
         tiles: Dict[str, Image.Image] = {}
 
@@ -386,7 +429,7 @@ class AnomalyEngine:
 
             logger.info(
                 "Tile indirme tamamlandi: %d/%d saglayici basarili",
-                len(tiles), len(TileProvider),
+                len(tiles), len(imagery_providers(lat, lng)),
             )
 
         except Exception as exc:
@@ -437,40 +480,6 @@ class AnomalyEngine:
             logger.error("OSM veri toplama hatasi: %s", exc)
 
         return buildings
-
-    async def _fetch_satellite_image(
-        self,
-        lat: float,
-        lng: float,
-        zoom: int,
-    ) -> Optional[Dict[str, Any]]:
-        """Uydu goruntusunu indirir (Sentinel → GIBS fallback).
-
-        Args:
-            lat: Enlem.
-            lng: Boylam.
-            zoom: Zoom seviyesi.
-
-        Returns:
-            {"image": Image, "source": str, ...} veya None.
-        """
-        from app.services.satellite_fetcher import fetch_best_available
-
-        try:
-            result = await fetch_best_available(
-                lat, lng, zoom,
-                radius_m=self._radius_m,
-                save=True,
-            )
-            logger.info(
-                "Uydu goruntusu alindi: kaynak=%s",
-                result.get("source", "unknown"),
-            )
-            return result
-
-        except Exception as exc:
-            logger.error("Uydu goruntusu alinamadi: %s", exc)
-            return None
 
     # ------------------------------------------------------------------ #
     # Pipeline adimlari — Analiz modulleri
@@ -632,7 +641,13 @@ class AnomalyEngine:
                 GeospatialAnalyzer,
             )
 
-            analyzer = GeospatialAnalyzer()
+            from app.services.analyzers.geospatial_analyzer import BuildingDetector
+
+            analyzer = GeospatialAnalyzer(
+                building_detector=BuildingDetector(
+                    model_name=settings.BUILDING_DETECTOR_WEIGHTS,
+                ),
+            )
             result = analyzer.analyze(
                 lat=lat,
                 lng=lng,
@@ -695,7 +710,8 @@ class AnomalyEngine:
         breakdown = ScoreBreakdown()
 
         # --- Provider disagreement score ---
-        # 4 farkli saglayici = tam puan (100)
+        # "Uyumsuz" = taban p90 ustu fark veren cift (pixel_diff.ANOMALY_MEDIUM_DIFF).
+        # Iki kaynakli duzende (Esri + MapTiler) en fazla 50 puan.
         if pixel_diff_result:
             disagreeing = pixel_diff_result.get("disagreeing_count", 0)
             # Uyumsuz saglayici sayisini 0-100'e normalize et
@@ -709,17 +725,18 @@ class AnomalyEngine:
                 breakdown.provider_disagreement_score = 25.0
 
         # --- Pixel diff score ---
+        # Ham fark dogrudan puan degildir (siradan konum ~%70); taban dagilimina gore olceklenir.
         if pixel_diff_result:
             max_diff = pixel_diff_result.get("max_diff_score", 0.0)
-            # diff_score 0-100 arasi, dogrudan kullan
-            breakdown.pixel_diff_score = min(100.0, max_diff)
+            breakdown.raw_max_diff = max_diff
+            breakdown.pixel_diff_score = diff_to_score(max_diff, provider_count)
+            breakdown.raw_max_diff_p90 = diff_baseline(provider_count)[0]
 
         # --- Blur censorship score ---
         if blur_result:
-            breakdown.blur_censorship_score = min(
-                100.0,
-                blur_result.get("censorship_score", 0.0),
-            )
+            breakdown.raw_censorship = blur_result.get("censorship_score", 0.0)
+            breakdown.blur_censorship_score = censorship_to_score(breakdown.raw_censorship)
+            breakdown.raw_censorship_p90 = CENSORSHIP_BASELINE_P90
 
         # --- Geospatial mismatch score ---
         if geospatial_result:
@@ -742,9 +759,11 @@ class AnomalyEngine:
             )
 
         # --- Historical change score ---
-        # Wayback Machine analizi gelecekte eklenecek
-        # Su an sabit baseline (veri mevcut degilse 0)
+        # Zaman serisi (Esri Wayback) ayri bir uctan sunulur; skora henuz bagli degil.
         breakdown.historical_change_score = 0.0
+        if not settings.BUILDING_DETECTOR_WEIGHTS:
+            breakdown.inactive_signals.append(INACTIVE_GEOSPATIAL)
+        breakdown.inactive_signals.append(INACTIVE_HISTORICAL)
 
         # --- Agirlikli toplam ---
         breakdown.weighted_total = min(100.0, (
@@ -819,9 +838,11 @@ class AnomalyEngine:
         # ---- Kural 1: CENSORED_AREA ----
         if blur_result:
             censorship_score = blur_result.get("censorship_score", 0.0)
-            if censorship_score > BLUR_CENSORSHIP_CATEGORY_THRESHOLD:
+            if score_breakdown.blur_censorship_score > SIGNAL_FLAG_SCORE:
                 most_blurred = blur_result.get("most_blurred", "bilinmiyor")
-                verdict = blur_result.get("censorship_verdict", "")
+                sharpest = blur_result.get("sharpest", "bilinmiyor")
+                comparison = blur_result.get("comparison")
+                reasons = list(getattr(comparison, "reasons", []) or [])
 
                 candidates.append(
                     AnomalyCandidate(
@@ -831,12 +852,14 @@ class AnomalyEngine:
                         confidence_score=self._category_score(
                             score_breakdown, AnomalyCategory.CENSORED_AREA
                         ),
-                        title=f"Sansurlu Bolge Tespiti ({most_blurred})",
+                        title=f"Bulanıklık farkı: {provider_name(most_blurred)}",
                         description=(
-                            f"Kasitli bulaniklistirma tespit edildi. "
-                            f"En bulanik saglayici: {most_blurred}. "
-                            f"Sansur skoru: {censorship_score:.0f}/100. "
-                            f"Karar: {verdict}."
+                            f"{provider_name(most_blurred)} karosu {provider_name(sharpest)} "
+                            f"karosuna göre belirgin "
+                            f"biçimde daha bulanık (ham skor {censorship_score:.0f}; "
+                            f"sıradan konumlarda en fazla 20). Kasıtlı bulanıklaştırma, "
+                            f"düşük çözünürlüklü mozaik ya da bulut olabilir; insan "
+                            f"doğrulaması gerekir."
                         ),
                         score_breakdown=score_breakdown,
                         source_providers=list(provider_tiles.keys()),
@@ -844,8 +867,9 @@ class AnomalyEngine:
                                            "regional_blur_map"],
                         meta_data={
                             "censorship_score": censorship_score,
-                            "censorship_verdict": verdict,
                             "most_blurred_provider": most_blurred,
+                            "sharpest_provider": sharpest,
+                            "reasons": reasons,
                         },
                         provider_images=provider_tiles,
                         blur_heatmap=blur_heatmap,
@@ -872,11 +896,11 @@ class AnomalyEngine:
                         confidence_score=self._category_score(
                             score_breakdown, AnomalyCategory.HIDDEN_STRUCTURE
                         ),
-                        title=f"Gizli Yapi Tespiti ({hidden_count} yapi)",
+                        title=f"Gizli yapı adayı ({hidden_count} yapı)",
                         description=(
-                            f"Uydu goruntusunde {hidden_count} yapi tespit "
-                            f"edildi ancak OSM veritabaninda kayitli degil. "
-                            f"Kasitli gizleme veya yeni insaat olabilir."
+                            f"Uydu görüntüsünde {hidden_count} yapı tespit "
+                            f"edildi ancak OSM'de kayıtlı değil. "
+                            f"Eksik harita verisi ya da yeni inşaat olabilir."
                         ),
                         score_breakdown=score_breakdown,
                         source_providers=["satellite", "osm"],
@@ -912,12 +936,11 @@ class AnomalyEngine:
                         confidence_score=self._category_score(
                             score_breakdown, AnomalyCategory.GHOST_BUILDING
                         ),
-                        title=f"Hayalet Bina Tespiti ({ghost_count} bina)",
+                        title=f"Hayalet bina adayı ({ghost_count} bina)",
                         description=(
-                            f"OSM veritabaninda {ghost_count} bina kayitli "
-                            f"ancak uydu goruntusunde tespit edilemedi. "
-                            f"Hatali veri, yikilmis bina veya sahte giris "
-                            f"olabilir."
+                            f"OSM'de {ghost_count} bina kayıtlı ancak uydu "
+                            f"görüntüsünde tespit edilemedi. Hatalı veri, "
+                            f"yıkılmış bina ya da sahte kayıt olabilir."
                         ),
                         score_breakdown=score_breakdown,
                         source_providers=["osm", "satellite"],
@@ -937,18 +960,17 @@ class AnomalyEngine:
         # ---- Kural 4: IMAGE_DISCREPANCY ----
         if pixel_diff_result:
             max_diff = pixel_diff_result.get("max_diff_score", 0.0)
-            blur_score = blur_result.get("censorship_score", 0.0) if blur_result else 0.0
             geo_score = score_breakdown.geospatial_mismatch_score
 
-            # Pixel diff yuksek AMA blur ve geo dusuk → salt gorsel tutarsizlik
+            # Pixel diff taban p99 ustu AMA bulaniklik ve mekansal sinyal yok → gorsel tutarsizlik
             if (
-                max_diff > PIXEL_DIFF_HIGH_THRESHOLD
-                and blur_score <= BLUR_CENSORSHIP_CATEGORY_THRESHOLD
+                score_breakdown.pixel_diff_score > SIGNAL_FLAG_SCORE
+                and score_breakdown.blur_censorship_score <= SIGNAL_FLAG_SCORE
                 and geo_score < 30
             ):
                 diff_pair = pixel_diff_result.get("max_diff_pair")
                 pair_label = (
-                    f"{diff_pair[0]} vs {diff_pair[1]}"
+                    f"{provider_name(diff_pair[0])} ↔ {provider_name(diff_pair[1])}"
                     if diff_pair
                     else "bilinmiyor"
                 )
@@ -961,13 +983,13 @@ class AnomalyEngine:
                         confidence_score=self._category_score(
                             score_breakdown, AnomalyCategory.IMAGE_DISCREPANCY
                         ),
-                        title=f"Gorsel Tutarsizlik ({pair_label})",
+                        title=f"Görüntü farkı ({pair_label})",
                         description=(
-                            f"Saglayicilar arasi yuksek piksel farki "
-                            f"tespit edildi: {max_diff:.1f}% "
-                            f"(cift: {pair_label}). "
-                            f"Sansur veya mekansal anomali isaretleri yok — "
-                            f"salt gorsel tutarsizlik."
+                            f"Kaynaklar arası piksel farkı %{tr_decimal(max_diff)} "
+                            f"({pair_label}); sıradan konumların %99'unda "
+                            f"%{tr_decimal(diff_baseline(len(provider_tiles))[1])} altında. "
+                            f"Bulanıklık farkı yok; fark çekim tarihi, mevsim, "
+                            f"yeni inşaat ya da yıkım olabilir."
                         ),
                         score_breakdown=score_breakdown,
                         source_providers=list(provider_tiles.keys()),
@@ -984,30 +1006,6 @@ class AnomalyEngine:
                         diff_image=diff_image,
                     )
                 )
-
-        # Hicbir kategori tetiklenmediyse ve genel skor yeterince yuksekse
-        # genel bir IMAGE_DISCREPANCY adayi olustur
-        if not candidates and score_breakdown.weighted_total >= self._min_confidence:
-            candidates.append(
-                AnomalyCandidate(
-                    category=AnomalyCategory.IMAGE_DISCREPANCY.value,
-                    lat=lat,
-                    lng=lng,
-                    confidence_score=score_breakdown.weighted_total,
-                    title="Genel Anomali Tespiti",
-                    description=(
-                        f"Birden fazla gostergede anomali isaretleri "
-                        f"tespit edildi. Genel skor: "
-                        f"{score_breakdown.weighted_total:.1f}/100."
-                    ),
-                    score_breakdown=score_breakdown,
-                    source_providers=list(provider_tiles.keys()),
-                    detection_methods=["multi_signal_fusion"],
-                    provider_images=provider_tiles,
-                    diff_image=diff_image,
-                    blur_heatmap=blur_heatmap,
-                )
-            )
 
         return candidates
 
@@ -1028,13 +1026,8 @@ class AnomalyEngine:
             Kategoriye ozel guven skoru (0–100).
         """
         if category == AnomalyCategory.CENSORED_AREA:
-            # Blur agirlikli
-            return min(100.0, (
-                breakdown.blur_censorship_score * 0.50
-                + breakdown.provider_disagreement_score * 0.25
-                + breakdown.pixel_diff_score * 0.15
-                + breakdown.geospatial_mismatch_score * 0.10
-            ))
+            # Kategoriyi doguran sinyalin taban-goreli puani
+            return breakdown.blur_censorship_score
 
         elif category == AnomalyCategory.HIDDEN_STRUCTURE:
             # Geospatial agirlikli
@@ -1055,13 +1048,8 @@ class AnomalyEngine:
             ))
 
         elif category == AnomalyCategory.IMAGE_DISCREPANCY:
-            # Pixel diff agirlikli
-            return min(100.0, (
-                breakdown.pixel_diff_score * 0.40
-                + breakdown.provider_disagreement_score * 0.30
-                + breakdown.blur_censorship_score * 0.15
-                + breakdown.geospatial_mismatch_score * 0.15
-            ))
+            # Kategoriyi doguran sinyalin taban-goreli puani
+            return breakdown.pixel_diff_score
 
         # Fallback: agirlikli toplam
         return breakdown.weighted_total
@@ -1097,6 +1085,12 @@ class AnomalyEngine:
             async with AsyncSessionLocal() as session:
                 for candidate in candidates:
                     try:
+                        existing = await self._find_existing(session, candidate)
+                        if existing is not None:
+                            await self._refresh_existing(session, existing, candidate, zoom)
+                            saved += 1
+                            continue
+
                         # Anomaly kaydı olustur
                         anomaly_id = uuid.uuid4()
 
@@ -1175,6 +1169,70 @@ class AnomalyEngine:
         return saved
 
     @staticmethod
+    async def _find_existing(session: Any, candidate: AnomalyCandidate) -> Optional[Any]:
+        """Aynı kategoride DEDUP_RADIUS_M içindeki reddedilmemiş kaydı döndürür."""
+        from geoalchemy2 import Geography
+        from sqlalchemy import func, select
+
+        from app.models.anomaly import Anomaly
+
+        point = func.ST_GeographyFromText(f"SRID=4326;POINT({candidate.lng} {candidate.lat})")
+        stmt = (
+            select(Anomaly)
+            .where(
+                Anomaly.category == candidate.category,
+                Anomaly.status != AnomalyStatus.REJECTED.value,
+                func.ST_DWithin(Anomaly.geom.cast(Geography), point, DEDUP_RADIUS_M),
+            )
+            .order_by(Anomaly.detected_at.asc())
+            .limit(1)
+        )
+        return (await session.execute(stmt)).scalar_one_or_none()
+
+    async def _refresh_existing(
+        self, session: Any, existing: Any, candidate: AnomalyCandidate, zoom: int
+    ) -> None:
+        """Var olan bulguyu son ölçümle günceller; doğrulama durumu ve oylar korunur."""
+        from sqlalchemy import delete
+
+        from app.models.anomaly_image import AnomalyImage
+
+        previous = dict(existing.meta_data or {})
+        existing.confidence_score = candidate.confidence_score
+        existing.title = candidate.title
+        existing.description = candidate.description
+        existing.source_providers = candidate.source_providers
+        existing.detection_methods = candidate.detection_methods
+        existing.meta_data = {
+            **previous,
+            **candidate.meta_data,
+            "score_breakdown": candidate.score_breakdown.to_dict(),
+            "scan_count": int(previous.get("scan_count", 1)) + 1,
+            "last_scanned_at": datetime.now(timezone.utc).isoformat(),
+        }
+        existing.updated_at = datetime.now(timezone.utc)
+
+        # Kanıt karoları son ölçümün karolarıyla değiştirilir.
+        await session.execute(delete(AnomalyImage).where(AnomalyImage.anomaly_id == existing.id))
+        for provider_name_, img in candidate.provider_images.items():
+            image_url = await self._save_provider_image(img, provider_name_, candidate.lat, candidate.lng)
+            session.add(
+                AnomalyImage(
+                    id=uuid.uuid4(),
+                    anomaly_id=existing.id,
+                    provider=provider_name_,
+                    image_url=image_url,
+                    captured_at=datetime.now(timezone.utc),
+                    zoom_level=zoom,
+                    is_blurred=(provider_name_ == candidate.meta_data.get("most_blurred_provider")),
+                )
+            )
+        logger.info(
+            "Var olan anomali guncellendi: %s @ (%.4f, %.4f) score=%.1f",
+            candidate.category, candidate.lat, candidate.lng, candidate.confidence_score,
+        )
+
+    @staticmethod
     async def _save_provider_image(
         image: Image.Image,
         provider: str,
@@ -1190,9 +1248,9 @@ class AnomalyEngine:
             lng: Boylam.
 
         Returns:
-            Kaydedilen dosyanin yolu/URL'si.
+            API'nin servis ettigi yol: ``/media/anomaly_images/<dosya>`` (bkz. main.py).
+            Eskiden diskteki yol donuyordu; tarayici o adresi hicbir zaman acamiyordu.
         """
-        import os
         from pathlib import Path
 
         storage_root = Path(
@@ -1200,11 +1258,11 @@ class AnomalyEngine:
         ) / "anomaly_images"
         storage_root.mkdir(parents=True, exist_ok=True)
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         unique_id = uuid.uuid4().hex[:8]
         filename = f"{provider}_{lat:.4f}_{lng:.4f}_{timestamp}_{unique_id}.png"
 
         filepath = storage_root / filename
         image.convert("RGB").save(str(filepath), "PNG", optimize=True)
 
-        return str(filepath)
+        return f"/media/anomaly_images/{filename}"

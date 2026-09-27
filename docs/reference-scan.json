@@ -1,0 +1,469 @@
+{
+ "tarih": "2026-09-27T13:55:21+00:00",
+ "zoom": 16,
+ "esik": 50.0,
+ "konumlar": [
+  {
+   "konum": "Groom Lake (Area 51), ABD",
+   "tur": "tesis",
+   "lat": 37.2431,
+   "lng": -115.793,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 6.27,
+   "ham_sansur": 20.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 50.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Pine Gap, Avustralya",
+   "tur": "tesis",
+   "lat": -23.799,
+   "lng": 133.737,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 16.23,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "RAF Menwith Hill, Birleşik Krallık",
+   "tur": "tesis",
+   "lat": 54.0086,
+   "lng": -1.6897,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 46.47,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Diego Garcia",
+   "tur": "tesis",
+   "lat": -7.3133,
+   "lng": 72.4111,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 9.75,
+   "ham_sansur": 15.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Yongbyon, Kuzey Kore",
+   "tur": "tesis",
+   "lat": 39.795,
+   "lng": 125.755,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 33.69,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Natanz, İran",
+   "tur": "tesis",
+   "lat": 33.725,
+   "lng": 51.727,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 60.22,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Dimona, İsrail",
+   "tur": "tesis",
+   "lat": 31.001,
+   "lng": 35.145,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 1.21,
+   "ham_sansur": 20.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 50.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Île Longue, Fransa",
+   "tur": "tesis",
+   "lat": 48.3055,
+   "lng": -4.514,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 25.7,
+   "ham_sansur": 25.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 53.12,
+   "anomaliler": [
+    {
+     "kategori": "CENSORED_AREA",
+     "guven": 53.1
+    }
+   ],
+   "yazilan": 0
+  },
+  {
+   "konum": "Istres-Le Tubé hava üssü, Fransa",
+   "tur": "tesis",
+   "lat": 43.523,
+   "lng": 4.924,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 17.16,
+   "ham_sansur": 15.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Volkel hava üssü, Hollanda",
+   "tur": "tesis",
+   "lat": 51.6566,
+   "lng": 5.708,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 91.71,
+   "ham_sansur": 0.0,
+   "piksel_puani": 66.59,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [
+    {
+     "kategori": "IMAGE_DISCREPANCY",
+     "guven": 66.6
+    }
+   ],
+   "yazilan": 0
+  },
+  {
+   "konum": "Sivastopol körfezi",
+   "tur": "tesis",
+   "lat": 44.6167,
+   "lng": 33.525,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 27.49,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Brest askeri limanı, Fransa",
+   "tur": "tesis",
+   "lat": 48.383,
+   "lng": -4.5,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 91.22,
+   "ham_sansur": 0.0,
+   "piksel_puani": 11.85,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Cherbourg askeri limanı, Fransa",
+   "tur": "tesis",
+   "lat": 49.645,
+   "lng": -1.628,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 61.53,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Taverny hava üssü (BA 921), Fransa",
+   "tur": "tesis",
+   "lat": 49.027,
+   "lng": 2.217,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 75.52,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Mont Verdun (BA 942), Fransa",
+   "tur": "tesis",
+   "lat": 45.863,
+   "lng": 4.769,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 31.69,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "CEA Valduc, Fransa",
+   "tur": "tesis",
+   "lat": 47.579,
+   "lng": 4.868,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 87.76,
+   "ham_sansur": 20.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 50.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Marcoule nükleer sahası, Fransa",
+   "tur": "tesis",
+   "lat": 44.144,
+   "lng": 4.712,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 83.15,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Saint-Dizier hava üssü (BA 113), Fransa",
+   "tur": "tesis",
+   "lat": 48.636,
+   "lng": 4.899,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 49.61,
+   "ham_sansur": 10.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Avord hava üssü (BA 702), Fransa",
+   "tur": "tesis",
+   "lat": 47.053,
+   "lng": 2.633,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 99.78,
+   "ham_sansur": 0.0,
+   "piksel_puani": 88.94,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [
+    {
+     "kategori": "IMAGE_DISCREPANCY",
+     "guven": 88.9
+    }
+   ],
+   "yazilan": 0
+  },
+  {
+   "konum": "Luxeuil hava üssü (BA 116), Fransa",
+   "tur": "tesis",
+   "lat": 47.787,
+   "lng": 6.364,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 93.29,
+   "ham_sansur": 15.0,
+   "piksel_puani": 22.03,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Kadıköy, İstanbul",
+   "tur": "kontrol",
+   "lat": 40.9903,
+   "lng": 29.029,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 71.43,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Berlin Mitte",
+   "tur": "kontrol",
+   "lat": 52.52,
+   "lng": 13.405,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 78.22,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Paris merkez",
+   "tur": "kontrol",
+   "lat": 48.8566,
+   "lng": 2.3522,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 81.79,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Iowa tarım alanı",
+   "tur": "kontrol",
+   "lat": 42.0308,
+   "lng": -93.6319,
+   "kaynaklar": [
+    "esri",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 20.65,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Tours merkez",
+   "tur": "kontrol",
+   "lat": 47.3941,
+   "lng": 0.6848,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 38.67,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Reims merkez",
+   "tur": "kontrol",
+   "lat": 49.2583,
+   "lng": 4.0317,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 66.32,
+   "ham_sansur": 0.0,
+   "piksel_puani": 0.0,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  },
+  {
+   "konum": "Montpellier merkez",
+   "tur": "kontrol",
+   "lat": 43.6108,
+   "lng": 3.8767,
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "ham_piksel_farki": 91.89,
+   "ham_sansur": 0.0,
+   "piksel_puani": 15.12,
+   "bulaniklik_puani": 0.0,
+   "anomaliler": [],
+   "yazilan": 0
+  }
+ ]
+}

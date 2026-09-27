@@ -8,7 +8,7 @@ endpoint'lerini sağlar.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,7 +16,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db.session import get_db
 from app.models.anomaly import Anomaly
 
@@ -92,7 +91,7 @@ def get_maps():
     """Harita API durumu."""
     return {
         "status": "ok",
-        "providers": ["OSM", "GOOGLE", "SENTINEL"],
+        "providers": ["esri", "maptiler", "ign", "osm"],
         "features": ["reverse-geocode", "search", "region-stats"],
     }
 

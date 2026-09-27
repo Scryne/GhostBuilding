@@ -15,14 +15,16 @@ import hashlib
 import json
 import logging
 import math
-import random
-from dataclasses import dataclass, field, asdict
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import httpx
 
 from app.config import settings
+from app.services.tile_fetcher import USER_AGENT
+
+if TYPE_CHECKING:
+    import redis.asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +61,8 @@ OVERPASS_ENDPOINTS: List[str] = [
 
 MAX_RETRIES: int = 2  # Her endpoint için
 
-USER_AGENTS: List[str] = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 "
-    "(KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
-]
+# Overpass kullanım politikası uygulamayı tanımlayan bir User-Agent ister; eskiden rastgele
+# tarayıcı kimliği uyduruluyordu. Tile servisiyle aynı tek kimlik (USER_AGENT) kullanılır.
 
 # Özel yapı kategorileri — gizli yapı tespiti için öncelikli
 SENSITIVE_TAGS: Dict[str, List[str]] = {
@@ -552,7 +549,7 @@ class OSMCollector:
                         endpoint,
                         data={"data": query},
                         headers={
-                            "User-Agent": random.choice(USER_AGENTS),
+                            "User-Agent": USER_AGENT,
                             "Content-Type": "application/x-www-form-urlencoded",
                         },
                     )

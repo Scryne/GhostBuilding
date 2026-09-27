@@ -10,7 +10,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "supersecretkey_change_in_production"
     ALLOWED_ORIGINS: List[str] = ["*"]
     MAX_SCAN_RADIUS_KM: int = 50
-    ANOMALY_CONFIDENCE_THRESHOLD: float = 60.0
+    # Anomali puanı 50 = sinyal, sıradan konumların p99'unu aşıyor (bkz. docs/algorithms.md).
+    ANOMALY_CONFIDENCE_THRESHOLD: float = 50.0
+    # Eşikler bu zoom seviyesinde ölçüldü; tarama bu seviyede analiz eder.
+    ANALYSIS_ZOOM: int = 16
 
     # DATABASE Configuration
     DATABASE_URL: str
@@ -22,6 +25,15 @@ class Settings(BaseSettings):
     CACHE_TTL_SECONDS: int = 3600
 
     # API KEYS (Optional)
+    # MapTiler Satellite: ikinci bağımsız uydu kaynağı (tile_fetcher). Yoksa karşılaştırma
+    # yalnız Esri ile yapılır — tek kaynakla sağlayıcılar arası fark hesaplanamaz.
+    MAPTILER_API_KEY: Optional[str] = None
+    # Hava/uydu görüntüsünde bina ayak izi için eğitilmiş YOLO ağırlıkları (.pt). Tanımlı
+    # değilse OSM ↔ görüntü karşılaştırması (hayalet bina / gizli yapı) ÇALIŞMAZ: genel
+    # COCO modeli yukarıdan bina tanımaz, sonucu uydurma olur.
+    BUILDING_DETECTOR_WEIGHTS: Optional[str] = None
+    # Kullanılmıyor: Google tile'ları artık çekilmiyor (resmî olmayan uç). Eski .env'ler
+    # bozulmasın diye alan duruyor.
     GOOGLE_MAPS_API_KEY: Optional[str] = None
     MAPBOX_API_KEY: Optional[str] = None
     SENTINEL_HUB_CLIENT_ID: Optional[str] = None

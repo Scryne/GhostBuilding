@@ -13,14 +13,12 @@ Modul iki ana siniftan olusur:
 
 from __future__ import annotations
 
-import asyncio
-import io
 import json
 import logging
 import os
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -143,7 +141,7 @@ class Timeline:
     lat: float
     lng: float
     zoom: int
-    provider: str = "osm"
+    provider: str = "esri"
     date_range: Tuple[str, str] = ("", "")
 
     @property
@@ -434,7 +432,7 @@ class TimeSeriesAnalyzer:
         zoom: int,
         *,
         years_back: Optional[int] = None,
-        provider: str = "osm",
+        provider: str = "esri",
     ) -> Timeline:
         """Wayback Machine'den tarihsel tile snapshot dizisini toplar.
 
@@ -447,7 +445,7 @@ class TimeSeriesAnalyzer:
             lng: Boylam.
             zoom: Zoom seviyesi.
             years_back: Kac yil geriye gidilecek. None ise varsayilan.
-            provider: Tile saglayicisi (varsayilan "osm").
+            provider: Tile saglayicisi (varsayilan "esri"; tarihsel arsiv Esri Wayback).
 
         Returns:
             Timeline — kronolojik snapshot dizisi.
@@ -469,7 +467,7 @@ class TimeSeriesAnalyzer:
         try:
             tile_provider = TileProvider(provider)
         except ValueError:
-            tile_provider = TileProvider.OSM
+            tile_provider = TileProvider.ESRI  # tarihsel arşiv yalnız Esri Wayback'te
 
         logger.info(
             "Timeline toplaniyor: (%.4f, %.4f) zoom=%d, "

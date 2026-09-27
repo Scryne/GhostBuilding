@@ -14,4 +14,10 @@ __all__ = [
     "AnomalyImage",
     "Verification",
     "ScanJob",
+    "AnomalyCategory",
+    "AnomalyStatus",
+    "ImageProvider",
+    "VerificationVote",
+    "UserRole",
+    "ScanJobStatus",
 ]

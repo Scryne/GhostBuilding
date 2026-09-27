@@ -18,7 +18,6 @@ from app.services.analyzers.blur_detector import (
     BlurMap,
     BlurComparisonResult,
     FFTResult,
-    LAPLACIAN_SEVERE_BLUR,
     LAPLACIAN_MODERATE_BLUR,
 )
 
@@ -322,6 +321,23 @@ class TestProviderBlurComparison:
         assert result.most_blurred_provider == "google"
         assert result.sharpest_provider == "osm"
         assert result.blur_variance > 0
+
+    def test_reasons_are_readable_and_add_up(self):
+        """Gerekçeler görünen adla yazılır; puan katkıları ham skoru verir."""
+        detector = BlurDetector(grid_size=4)
+        images = {
+            "esri": _create_blurred_image(128, radius=15),
+            "maptiler": _create_sharp_image(128),
+            "ign": _create_noise_image(128),
+        }
+
+        result = detector.compare_blur_across_providers(images)
+
+        assert result.censorship_score > 0
+        assert not any(r.startswith("esri:") for r in result.reasons)
+        assert any("Esri World Imagery" in r for r in result.reasons)
+        points = sum(int(r.rsplit("· +", 1)[1]) for r in result.reasons)
+        assert points == min(100, round(result.censorship_score))
 
     def test_provider_results_populated(self):
         """Her sağlayıcı için sonuç dönmeli."""

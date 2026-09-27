@@ -23,9 +23,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 from app.config import settings
+from app.services.tile_fetcher import provider_name
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,29 @@ CENSORSHIP_HIGH: float = 90.0       # > 90: "Yüksek ihtimalle sansürlü"
 PROVIDER_BLUR_DEVIATION_FACTOR: float = 2.0  # Ortalamadan 2x sapma = şüpheli
 PROVIDER_MIN_SCORE_DIFF: float = 30.0        # Minimum anlamlı fark
 
+# Taban dağılımı (scripts/calibrate_diff.py, sıradan 40 konum, z=16, Esri + MapTiler):
+# sansür skoru ortanca 0, p90 15.5, p99 20 (= en yüksek değer; n=40 küçük, p99 ≈ maks).
+# Kural skorları kaba basamaklar olduğu için ham skor "olasılık" değildir; anomali puanı
+# tabana göre verilir.
+CENSORSHIP_BASELINE_P90: float = 15.5
+CENSORSHIP_BASELINE_P99: float = 20.0
+
+
+def censorship_to_score(censorship_score: float) -> float:
+    """Ham sansür skorunu taban dağılımına göre 0–100 anomali puanına çevirir.
+
+    Taban p90'a kadar 0, p90→p99 arası 0→50, p99→100 arası 50→100 (doğrusal).
+    """
+    if censorship_score <= CENSORSHIP_BASELINE_P90:
+        return 0.0
+    if censorship_score <= CENSORSHIP_BASELINE_P99:
+        return 50.0 * (censorship_score - CENSORSHIP_BASELINE_P90) / (
+            CENSORSHIP_BASELINE_P99 - CENSORSHIP_BASELINE_P90
+        )
+    return min(100.0, 50.0 + 50.0 * (censorship_score - CENSORSHIP_BASELINE_P99) / (
+        100.0 - CENSORSHIP_BASELINE_P99
+    ))
+
 # Varsayılan grid boyutu
 DEFAULT_GRID_SIZE: int = 8
 
@@ -62,6 +86,12 @@ DEFAULT_GRID_SIZE: int = 8
 # ---------------------------------------------------------------------------
 # Veri sınıfları
 # ---------------------------------------------------------------------------
+
+
+
+def tr_decimal(value: float) -> str:
+    """Gerekçe metni için Türkçe ondalık (42.5 → 42,5)."""
+    return f"{value:.1f}".replace(".", ",")
 
 
 @dataclass
@@ -702,7 +732,7 @@ class BlurDetector:
 
         Args:
             images: Sağlayıcı adı → PIL Image sözlüğü.
-                    Örn: {"osm": img_osm, "google": img_google}
+                    Örn: {"esri": img_esri, "maptiler": img_maptiler}
 
         Returns:
             BlurComparisonResult — sansür analizi sonuçları.
@@ -713,9 +743,9 @@ class BlurDetector:
         Examples:
             >>> detector = BlurDetector()
             >>> result = detector.compare_blur_across_providers({
-            ...     "osm": tile_osm,
-            ...     "google": tile_google,
-            ...     "bing": tile_bing,
+            ...     "esri": tile_esri,
+            ...     "maptiler": tile_maptiler,
+            ...     "ign": tile_ign,
             ... })
             >>> 0 <= result.censorship_score <= 100
             True
@@ -827,7 +857,7 @@ class BlurDetector:
         reasons: List[str] = []
 
         if len(provider_infos) < 2:
-            return 0.0, ["Yetersiz sağlayıcı sayısı."]
+            return 0.0, ["Karşılaştırma için en az iki kaynak gerekir."]
 
         # Laplacian skorlarının ortalaması ve std'si
         all_laps = list(laplacian_scores.values())
@@ -852,10 +882,10 @@ class BlurDetector:
                         if ratio < 0.5:
                             score += 30.0
                             reasons.append(
-                                f"{info.provider}: Laplacian varyansı "
-                                f"({info.laplacian_var:.1f}) diğerlerinin "
-                                f"ortalamasından ({other_mean:.1f}) çok "
-                                f"düşük (oran: {ratio:.2f})"
+                                f"{provider_name(info.provider)} keskinliği diğer "
+                                f"kaynakların yarısından az (Laplacian varyansı "
+                                f"{tr_decimal(info.laplacian_var)}, diğerleri ortalama "
+                                f"{tr_decimal(other_mean)}) · +30"
                             )
 
         # --- Kural 2: FFT'de düşük geçiş anomalisi ---
@@ -869,8 +899,9 @@ class BlurDetector:
                 if not others_have_anomaly:
                     score += 25.0
                     reasons.append(
-                        f"{name}: FFT spektrumunda düşük geçiş filtresi "
-                        f"anomalisi tespit edildi (diğerlerinde yok)"
+                        f"{provider_name(name)} frekans spektrumunda yüksek "
+                        f"frekanslar kesik (düşük geçiş filtresi izi; diğer "
+                        f"kaynaklarda yok) · +25"
                     )
 
         # --- Kural 3: Bölgesel anomali tespiti ---
@@ -884,8 +915,9 @@ class BlurDetector:
                 if not others_have_regional:
                     score += 20.0
                     reasons.append(
-                        f"{name}: {len(bmap.anomaly_regions)} bölgesel "
-                        f"bulanıklık anomalisi (diğerlerinde yok)"
+                        f"{provider_name(name)} karosunda "
+                        f"{len(bmap.anomaly_regions)} bölge çevresinden belirgin "
+                        f"bulanık (diğer kaynaklarda yok) · +20"
                     )
 
         # --- Kural 4: Şiddetli bulanıklık seviyesi ---
@@ -899,9 +931,9 @@ class BlurDetector:
                 if others_sharp > 0:
                     score += 15.0
                     reasons.append(
-                        f"{info.provider}: Şiddetli bulanıklık "
-                        f"({info.laplacian_var:.1f}) ama {others_sharp} "
-                        f"sağlayıcı keskin"
+                        f"{provider_name(info.provider)} şiddetli bulanık "
+                        f"(Laplacian varyansı {tr_decimal(info.laplacian_var)}), "
+                        f"{others_sharp} kaynak keskin · +15"
                     )
 
         # --- Kural 5: Diğerleri keskin, biri bulanık ---
@@ -919,8 +951,8 @@ class BlurDetector:
             blurred = blurred_providers[0]
             score += 10.0
             reasons.append(
-                f"{blurred.provider}: Tek bulanık sağlayıcı "
-                f"({len(sharp_providers)} keskin sağlayıcı var)"
+                f"Bulanık olan tek kaynak {provider_name(blurred.provider)}; "
+                f"{len(sharp_providers)} kaynak keskin · +10"
             )
 
         # Skoru 0-100 arasına sınırla

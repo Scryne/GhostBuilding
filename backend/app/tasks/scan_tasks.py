@@ -15,7 +15,6 @@ Her tarama adımında:
 from __future__ import annotations
 
 import asyncio
-import logging
 import math
 import uuid
 from datetime import datetime, timezone
@@ -186,10 +185,9 @@ def scan_coordinate(
     scan_job_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Tek bir koordinatı tarar: tile indirme → OSM veri → uydu → analiz → DB.
+    Tek bir koordinatı tarar: AnomalyEngine (karolar → OSM → analiz → DB).
 
-    Bu görev tüm veri toplama ve analiz pipeline'ını çalıştırır.
-    İlerleme Redis üzerinden %0, %25, %50, %75, %100 olarak güncellenir.
+    İlerleme Redis üzerinden %0, %10, %90, %100 olarak güncellenir.
 
     Args:
         lat: Hedef enlemi.
@@ -202,10 +200,10 @@ def scan_coordinate(
         Tarama sonuç sözlüğü:
         - task_id: Celery task ID
         - lat, lng: Tarama koordinatları
-        - tile_count: İndirilen tile sayısı
+        - tile_count / providers: Karo gelen uydu kaynakları
         - building_count: Bulunan bina sayısı
-        - anomalies: Tespit edilen anomali listesi
-        - satellite_source: Uydu görüntü kaynağı
+        - anomalies: Eşiği geçen (DB'ye yazılan) anomaliler
+        - score_breakdown: Konumun sinyal puanları (eşik altı olsa da)
         - completed_at: Tamamlanma zamanı
 
     Raises:
@@ -233,220 +231,53 @@ def scan_coordinate(
         "zoom": zoom,
         "radius_km": radius_km,
         "tile_count": 0,
+        "providers": [],
         "building_count": 0,
         "sensitive_count": 0,
         "anomalies": [],
-        "satellite_source": None,
-        "errors": [],
+        "score_breakdown": None,
     }
 
     try:
-        # ============================================================
-        # %0 — Başlatıldı
-        # ============================================================
         _update_progress(task_id, 0, "Tarama başlatılıyor")
+        _update_progress(task_id, 10, "Uydu karoları ve OSM verisi toplanıyor")
 
-        # ============================================================
-        # %25 — Harita tile'larını indir
-        # ============================================================
-        _update_progress(task_id, 10, "Harita tile'ları indiriliyor")
+        # Motor veriyi kendisi toplar, analiz eder ve eşiği geçen adayları DB'ye yazar.
+        # Eskiden görev aynı veriyi motordan önce bir kez daha çekiyor (kaynaklara iki kat
+        # yük) ve adayları ikinci kez, yanlış anahtarlarla ("type"/"confidence") yazıyordu.
+        # Motor hatası artık sabit güvenli "sezgisel" anomali üretmez: görev başarısız olur.
+        from app.services.anomaly_engine import AnomalyEngine
 
-        tile_results = {}
-        try:
-            from app.services.tile_fetcher import TileFetcher, TileProvider
+        engine = AnomalyEngine(
+            radius_m=int(radius_km * 1000),
+            min_confidence=settings.ANOMALY_CONFIDENCE_THRESHOLD,
+        )
+        # Eşikler ANALYSIS_ZOOM'da ölçüldü; istek zoom'u yalnız harita görünümü içindir.
+        candidates = _run_async(engine.analyze(lat, lng, settings.ANALYSIS_ZOOM))
+        run = engine.last_run
 
-            async def _fetch_tiles():
-                async with TileFetcher() as fetcher:
-                    return await fetcher.fetch_all_providers(lat, lng, zoom)
-
-            tile_results = _run_async(_fetch_tiles())
-            result["tile_count"] = len(tile_results)
-            logger.info(
-                "[%s] %d sağlayıcıdan tile indirildi",
-                task_id, len(tile_results),
+        result.update(
+            tile_count=run.get("tile_count", 0),
+            providers=run.get("providers", []),
+            building_count=run.get("building_count", 0),
+            sensitive_count=run.get("sensitive_count", 0),
+            score_breakdown=run.get("score_breakdown"),
+            anomalies=[c.to_dict() for c in candidates],
+        )
+        if result["tile_count"] < 2:
+            raise RuntimeError(
+                f"Karşılaştırma için en az iki uydu kaynağı gerekli "
+                f"(gelen: {result['providers'] or 'yok'})"
             )
-        except Exception as exc:
-            logger.warning("[%s] Tile indirme hatası: %s", task_id, exc)
-            result["errors"].append(f"tile_fetch: {str(exc)}")
-
-        _update_progress(task_id, 25, "Tile'lar indirildi")
-
-        # ============================================================
-        # %50 — OSM bina verisi çek
-        # ============================================================
-        _update_progress(task_id, 30, "OSM bina verileri çekiliyor")
-
-        buildings = []
-        geojson = {}
-        try:
-            from app.services.osm_collector import OSMCollector
-
-            radius_m = int(radius_km * 1000)
-
-            async def _fetch_osm():
-                async with OSMCollector() as collector:
-                    blds = await collector.fetch_buildings(lat, lng, radius_m)
-                    amenities = await collector.fetch_amenities(lat, lng, radius_m)
-                    return blds, amenities
-
-            buildings, amenities = _run_async(_fetch_osm())
-
-            # Amenity'leri birleştir
-            existing_ids = {b.osm_id for b in buildings}
-            for am in amenities:
-                if am.osm_id not in existing_ids:
-                    buildings.append(am)
-
-            result["building_count"] = len(buildings)
-            result["sensitive_count"] = sum(1 for b in buildings if b.is_sensitive)
-
-            logger.info(
-                "[%s] %d bina bulundu (%d hassas)",
-                task_id,
-                len(buildings),
-                result["sensitive_count"],
-            )
-        except Exception as exc:
-            logger.warning("[%s] OSM veri çekme hatası: %s", task_id, exc)
-            result["errors"].append(f"osm_fetch: {str(exc)}")
-
-        _update_progress(task_id, 50, "OSM verileri alındı")
-
-        # ============================================================
-        # %75 — Uydu görüntüsü al
-        # ============================================================
-        _update_progress(task_id, 55, "Uydu görüntüsü indiriliyor")
-
-        satellite_result = {}
-        try:
-            from app.services.satellite_fetcher import fetch_best_available
-
-            async def _fetch_satellite():
-                return await fetch_best_available(
-                    lat, lng, zoom,
-                    radius_m=int(radius_km * 1000),
-                    save=True,
-                )
-
-            satellite_result = _run_async(_fetch_satellite())
-            result["satellite_source"] = satellite_result.get("source")
-
-            logger.info(
-                "[%s] Uydu görüntüsü alındı: %s",
-                task_id,
-                result["satellite_source"],
-            )
-        except Exception as exc:
-            logger.warning("[%s] Uydu görüntüsü hatası: %s", task_id, exc)
-            result["errors"].append(f"satellite_fetch: {str(exc)}")
-
-        _update_progress(task_id, 75, "Uydu görüntüsü alındı")
-
-        # ============================================================
-        # %90 — AnomalyEngine: Tam analiz pipeline'ı
-        # ============================================================
-        _update_progress(task_id, 80, "Anomali analizi çalıştırılıyor")
-
-        anomalies_detected: List[Dict[str, Any]] = []
-
-        try:
-            from app.services.anomaly_engine import AnomalyEngine
-
-            async def _run_analysis():
-                engine = AnomalyEngine(
-                    radius_m=int(radius_km * 1000),
-                    min_confidence=settings.ANOMALY_CONFIDENCE_THRESHOLD,
-                )
-                return await engine.analyze(lat, lng, zoom)
-
-            engine_candidates = _run_async(_run_analysis())
-
-            for candidate in engine_candidates:
-                anomalies_detected.append(candidate.to_dict())
-
-            result["anomalies"] = anomalies_detected
-
-            logger.info(
-                "[%s] AnomalyEngine tamamlandı: %d anomali tespit edildi",
-                task_id,
-                len(anomalies_detected),
-            )
-
-        except Exception as exc:
-            logger.warning(
-                "[%s] AnomalyEngine hatası, fallback heuristic: %s",
-                task_id, exc,
-            )
-            result["errors"].append(f"engine: {str(exc)}")
-
-            # --- Fallback: basit heuristic anomali tespiti ---
-            try:
-                for b in buildings:
-                    if b.is_sensitive:
-                        anomalies_detected.append({
-                            "type": "HIDDEN_STRUCTURE",
-                            "lat": b.centroid[0],
-                            "lng": b.centroid[1],
-                            "confidence": 65.0,
-                            "description": (
-                                f"Hassas yapı tespit edildi: "
-                                f"{b.building_type} — {b.name or 'İsimsiz'}"
-                            ),
-                            "osm_id": b.osm_id,
-                            "source_providers": (
-                                list(tile_results.keys())
-                                if tile_results else []
-                            ),
-                        })
-
-                if tile_results and len(tile_results) < 3:
-                    anomalies_detected.append({
-                        "type": "IMAGE_DISCREPANCY",
-                        "lat": lat,
-                        "lng": lng,
-                        "confidence": 40.0,
-                        "description": (
-                            f"Bazı harita sağlayıcıları tile döndürmedi "
-                            f"(mevcut: {len(tile_results)}/4)"
-                        ),
-                        "source_providers": (
-                            list(tile_results.keys())
-                            if tile_results else []
-                        ),
-                    })
-
-                result["anomalies"] = anomalies_detected
-
-            except Exception as fb_exc:
-                logger.error("[%s] Fallback heuristic hatası: %s", task_id, fb_exc)
-                result["errors"].append(f"fallback: {str(fb_exc)}")
 
         _update_progress(task_id, 90, "Analiz tamamlandı")
-
-        # ============================================================
-        # %100 — Sonuçları DB'ye yaz
-        # ============================================================
-        _update_progress(task_id, 95, "Sonuçlar veritabanına yazılıyor")
-
-        try:
-            _write_anomalies_to_db(
-                anomalies_detected,
-                task_id=task_id,
-                zoom=zoom,
-                tile_results=tile_results,
-            )
-        except Exception as exc:
-            logger.warning("[%s] DB yazma hatası: %s", task_id, exc)
-            result["errors"].append(f"db_write: {str(exc)}")
-
-        # Job tamamlandı
         result["completed_at"] = datetime.now(timezone.utc).isoformat()
 
         if scan_job_id:
             _update_scan_job_status(
                 scan_job_id,
                 "COMPLETED",
-                anomaly_count=len(anomalies_detected),
+                anomaly_count=len(candidates),
                 completed_at=datetime.now(timezone.utc),
             )
 
@@ -456,15 +287,16 @@ def scan_coordinate(
             "Tarama tamamlandı",
             extra={
                 "building_count": result["building_count"],
-                "anomaly_count": len(anomalies_detected),
+                "anomaly_count": len(candidates),
             },
         )
 
         logger.info(
-            "[%s] Tarama tamamlandı: %d bina, %d anomali",
+            "[%s] Tarama tamamlandı: %d kaynak, %d bina, %d anomali",
             task_id,
+            result["tile_count"],
             result["building_count"],
-            len(anomalies_detected),
+            len(candidates),
         )
 
         return result
@@ -480,81 +312,6 @@ def scan_coordinate(
 
         # Retry
         raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1))
-
-
-def _write_anomalies_to_db(
-    anomalies: List[Dict[str, Any]],
-    *,
-    task_id: str,
-    zoom: int,
-    tile_results: dict,
-) -> None:
-    """
-    Tespit edilen anomalileri veritabanına yazar.
-
-    Args:
-        anomalies: Anomali sözlükleri listesi.
-        task_id: İlişkili task ID.
-        zoom: Zoom seviyesi.
-        tile_results: Tile sonuçları.
-    """
-    if not anomalies:
-        return
-
-    from sqlalchemy import create_engine, text
-
-    sync_url = settings.DATABASE_URL.replace(
-        "postgresql+asyncpg", "postgresql+psycopg2"
-    )
-    engine = create_engine(sync_url)
-
-    try:
-        with engine.connect() as conn:
-            for anomaly in anomalies:
-                anomaly_id = str(uuid.uuid4())
-                alat = anomaly.get("lat", 0.0)
-                alng = anomaly.get("lng", 0.0)
-
-                conn.execute(
-                    text("""
-                        INSERT INTO anomalies
-                            (id, lat, lng, geom, category, confidence_score,
-                             description, status, source_providers, detection_methods,
-                             meta_data)
-                        VALUES
-                            (:id, :lat, :lng,
-                             ST_SetSRID(ST_MakePoint(:lng, :lat), 4326),
-                             :category, :confidence,
-                             :description, 'PENDING',
-                             :source_providers, :detection_methods,
-                             :meta_data)
-                    """),
-                    {
-                        "id": anomaly_id,
-                        "lat": alat,
-                        "lng": alng,
-                        "category": anomaly.get("type", "IMAGE_DISCREPANCY"),
-                        "confidence": anomaly.get("confidence", 0.0),
-                        "description": anomaly.get("description", ""),
-                        "source_providers": str(
-                            anomaly.get("source_providers", [])
-                        ).replace("'", '"'),
-                        "detection_methods": '["heuristic"]',
-                        "meta_data": f'{{"task_id": "{task_id}"}}',
-                    },
-                )
-
-            conn.commit()
-            logger.info(
-                "[%s] %d anomali veritabanına yazıldı",
-                task_id,
-                len(anomalies),
-            )
-    except Exception as exc:
-        logger.error("[%s] Anomali DB yazma hatası: %s", task_id, exc)
-        raise
-    finally:
-        engine.dispose()
 
 
 # ---------------------------------------------------------------------------
@@ -653,9 +410,9 @@ def batch_scan_region(
         # chord ile çalıştır: paralel scan → aggregate
         pipeline = chord(scan_tasks)(callback)
 
-        task_ids = [
-            f"pending_{i}" for i in range(len(grid_points))
-        ]
+        # Gerçek alt görev kimlikleri (eskiden "pending_0…" diye uyduruluyordu).
+        header = pipeline.parent
+        task_ids = [r.id for r in header.results] if header is not None else []
 
         result = {
             "batch_task_id": task_id,
@@ -663,6 +420,7 @@ def batch_scan_region(
             "grid_density": grid_density,
             "cell_radius_km": cell_radius_km,
             "task_ids": task_ids,
+            "aggregate_task_id": pipeline.id,
             "scan_job_id": scan_job_id,
             "status": "DISPATCHED",
         }

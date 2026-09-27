@@ -8,15 +8,13 @@ PostGIS mekansal sorgulamalar mock'lanmıştır.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.conftest import TestAnomaly, TestAnomalyImage, auth_header
+from tests.conftest import TestAnomaly, auth_header
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -94,6 +92,12 @@ async def test_list_anomalies_status_filter(
     )
     data2 = response2.json()
     assert data2["pagination"]["total"] == 0
+
+    # Virgülle ayrılmış liste (Keşfet sayfası böyle gönderir) — eskiden hep 0 dönüyordu
+    response3 = await client.get(
+        "/api/v1/anomalies/?status=PENDING,VERIFIED,UNDER_REVIEW&category=GHOST_BUILDING,CENSORED_AREA&min_confidence=0"
+    )
+    assert response3.json()["pagination"]["total"] >= 1
 
 
 @pytest.mark.asyncio
@@ -173,13 +177,22 @@ async def test_scan_coordinate_returns_task_id(
         headers=auth_header(user_token),
     )
 
-    # scan endpoint auth gerektirmiyor olabilir — 200 veya 201
     assert response.status_code in (200, 201, 202)
 
     data = response.json()
     assert "task_id" in data
     assert "status_url" in data
     assert "estimated_seconds" in data
+
+
+@pytest.mark.asyncio
+async def test_scan_girissiz_reddedilir(client: AsyncClient, mock_celery):
+    """Tarama karo sunucularına ve MapTiler kotasına istek atar; anonim başlatılamaz."""
+    response = await client.post(
+        "/api/v1/anomalies/scan",
+        json={"lat": 41.0082, "lng": 28.9784, "zoom": 16, "radius_km": 1.0},
+    )
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -214,6 +227,7 @@ async def test_scan_rate_limit(client: AsyncClient, user_token):
         response = await client.post(
             "/api/v1/anomalies/scan",
             json={"lat": 41.0082, "lng": 28.9784},
+            headers=auth_header(user_token),
         )
 
     assert response.status_code == 429

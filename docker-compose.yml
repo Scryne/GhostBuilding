@@ -45,6 +45,9 @@ services:
       - SECRET_KEY=${SECRET_KEY:-supersecretkey_change_in_production}
       - ENVIRONMENT=dev
       - DEBUG=true
+      - MAPTILER_API_KEY=${MAPTILER_API_KEY:-}
+    # Şema her açılışta güncellenir (eskiden migration hiç çalışmıyordu: kayıt/giriş 500).
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     depends_on:
       db:
         condition: service_healthy
@@ -64,6 +67,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-ghostbuilding}
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-supersecretkey_change_in_production}
+      - MAPTILER_API_KEY=${MAPTILER_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -83,6 +87,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-ghostbuilding}
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-supersecretkey_change_in_production}
+      - MAPTILER_API_KEY=${MAPTILER_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -102,6 +107,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-ghostbuilding}
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-supersecretkey_change_in_production}
+      - MAPTILER_API_KEY=${MAPTILER_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -116,10 +122,13 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+        NEXT_PUBLIC_MAPLIBRE_TOKEN: ${NEXT_PUBLIC_MAPLIBRE_TOKEN:-}
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      # Sunucu tarafı istekler (bulgu sayfası, sitemap) konteyner ağından gider
+      - API_INTERNAL_URL=http://backend:8000/api/v1
     depends_on:
       - backend
     restart: unless-stopped

@@ -13,18 +13,16 @@ import os
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 
-import asyncio
 import uuid
 from datetime import datetime, timezone
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import Column, String, Float, Text, Integer, Boolean, DateTime, event, ForeignKey
+from sqlalchemy import Column, String, Float, Text, Integer, Boolean, DateTime, ForeignKey
 from sqlalchemy.dialects.sqlite import JSON
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -148,12 +146,8 @@ class TestScanJob(TestBase):
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    """Session-scoped event loop for async tests."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# Oturum boyu tek olay döngüsü pytest.ini'deki loop_scope ayarlarıyla kurulur
+# (pytest-asyncio 1.x özel event_loop fikstürünü kaldırdı).
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -442,7 +436,7 @@ async def test_anomaly(db_session: AsyncSession) -> TestAnomaly:
         title="Test Anomaly — İstanbul",
         description="Test amaçlı oluşturulmuş anomali.",
         status="PENDING",
-        source_providers=["GOOGLE", "OSM"],
+        source_providers=["esri", "maptiler"],
         detection_methods=["pixel_diff"],
         meta_data={"base_confidence": 72.5},
     )

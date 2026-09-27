@@ -8,10 +8,8 @@ otomatik durum geçişi mantığını test eder.
 from __future__ import annotations
 
 import uuid
-from unittest.mock import patch, AsyncMock
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -210,6 +208,9 @@ async def test_get_verifications_after_voting(
     assert verif["comment"] == "Test comment."
     assert "is_trusted_verifier" in verif
     assert "vote_weight" in verif
+    # Yeni kullanıcı (trust 50) güvenilir sayılmaz; eskiden 4.0 eşiği herkesi 2× ağırlıklı yapıyordu
+    assert verif["is_trusted_verifier"] is False
+    assert verif["vote_weight"] == 1.0
 
 
 @pytest.mark.asyncio
@@ -311,3 +312,25 @@ async def test_community_score_structure(
     assert "weighted_deny_count" in data
     assert "base_confidence" in data
     assert "final_confidence" in data
+
+
+@pytest.mark.asyncio
+async def test_profil_kendi_oylarini_listeler(client: AsyncClient, test_anomaly, user_token):
+    """Profil sayfası gerçek oy geçmişini okur (eskiden arayüz demo verisi uyduruyordu)."""
+    await client.post(
+        f"/api/v1/anomalies/{test_anomaly.id}/verify",
+        json={"vote": "CONFIRM", "comment": "Karolarda net görünüyor."},
+        headers=auth_header(user_token),
+    )
+    response = await client.get("/api/v1/auth/me/verifications", headers=auth_header(user_token))
+    assert response.status_code == 200
+    mine = [i for i in response.json() if i["anomaly_id"] == str(test_anomaly.id)]
+    assert len(mine) == 1
+    assert mine[0]["vote"] == "CONFIRM"
+    assert mine[0]["comment"] == "Karolarda net görünüyor."
+
+
+@pytest.mark.asyncio
+async def test_profil_oylari_giris_ister(client: AsyncClient):
+    response = await client.get("/api/v1/auth/me/verifications")
+    assert response.status_code == 401

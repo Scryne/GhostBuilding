@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,10 +28,8 @@ from app.db.session import get_db
 from app.models.user import User
 from app.models.enums import UserRole
 from app.services.auth_service import (
-    AuthService,
     auth_service,
     get_current_user,
-    require_role,
     oauth2_scheme,
 )
 from app.utils.sanitizer import validate_safe_string
@@ -732,6 +730,65 @@ async def get_me(
         is_verified=getattr(current_user, "is_verified", False),
         created_at=getattr(current_user, "created_at", None),
     )
+
+
+class MyVerificationItem(BaseModel):
+    """Kullanıcının verdiği bir doğrulama oyu ve ilgili bulgu."""
+
+    anomaly_id: str
+    vote: str
+    comment: Optional[str] = None
+    created_at: Optional[datetime] = None
+    category: str
+    anomaly_status: str
+    confidence_score: float
+    lat: float
+    lng: float
+    location_label: Optional[str] = None
+
+
+@router.get(
+    "/me/verifications",
+    response_model=list[MyVerificationItem],
+    summary="Doğrulamalarım",
+    description="Mevcut kullanıcının verdiği son doğrulama oyları (en yeni önce).",
+    tags=["auth"],
+)
+async def get_my_verifications(
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[MyVerificationItem]:
+    """Profil sayfası için gerçek oy geçmişi (eskiden arayüz demo verisi gösteriyordu)."""
+    from app.models.anomaly import Anomaly
+    from app.models.verification import Verification
+
+    stmt = (
+        select(Verification, Anomaly)
+        .join(Anomaly, Anomaly.id == Verification.anomaly_id)
+        .where(Verification.user_id == current_user.id)
+        .order_by(Verification.created_at.desc())
+        .limit(max(1, min(limit, 100)))
+    )
+    rows = (await db.execute(stmt)).all()
+    items: list[MyVerificationItem] = []
+    for verification, anomaly in rows:
+        meta = anomaly.meta_data or {}
+        items.append(
+            MyVerificationItem(
+                anomaly_id=str(anomaly.id),
+                vote=verification.vote,
+                comment=verification.comment,
+                created_at=verification.created_at,
+                category=anomaly.category,
+                anomaly_status=anomaly.status or "PENDING",
+                confidence_score=anomaly.confidence_score or 0.0,
+                lat=anomaly.lat,
+                lng=anomaly.lng,
+                location_label=meta.get("reference_site") or meta.get("location_label"),
+            )
+        )
+    return items
 
 
 # ═══════════════════════════════════════════════════════════════════════════

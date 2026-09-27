@@ -11,7 +11,6 @@ her görüntü için metadata JSON dosyası oluşturulur.
 
 from __future__ import annotations
 
-import asyncio
 import io
 import json
 import logging

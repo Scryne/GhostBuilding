@@ -14,9 +14,9 @@ class AnomalyStatus(str, enum.Enum):
 
 class ImageProvider(str, enum.Enum):
     OSM = "OSM"
-    GOOGLE = "GOOGLE"
-    BING = "BING"
-    YANDEX = "YANDEX"
+    ESRI = "ESRI"
+    MAPTILER = "MAPTILER"
+    IGN = "IGN"
     SENTINEL = "SENTINEL"
     WAYBACK = "WAYBACK"
 

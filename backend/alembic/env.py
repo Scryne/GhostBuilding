@@ -15,7 +15,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.config import settings
 from app.models import Base
-import geoalchemy2 # Important for postgis types reflection
 
 config_alembic = context.config
 config_alembic.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

@@ -14,7 +14,6 @@ Modül üç ana sınıftan oluşur:
 
 from __future__ import annotations
 
-import io
 import logging
 import os
 import uuid
@@ -48,9 +47,44 @@ DEFAULT_MIN_CONTOUR_AREA: int = 100    # minimum bölge alanı (piksel²)
 DEFAULT_BLUR_KERNEL: int = 5           # Gaussian bulanıklık çekirdeği
 
 # Anomaly skorlama eşikleri
-ANOMALY_HIGH_DIFF: int = 30            # diff_score > 30 → +40 puan
-ANOMALY_MEDIUM_DIFF: int = 15          # diff_score > 15 → +20 puan
+# Eşikler ÖLÇÜMDEN: iki bağımsız uydu mozaiği (Esri, MapTiler) sıradan 40 konumda z=16'da
+# ortanca %71,5, p90 %80,1, p99 %87,6 piksel farkı veriyor (çekim tarihi, mevsim, gölge,
+# bakış açısı). Eski eşikler (%15 / %30) bu konumların 39/40'ını "yüksek anomali" sayıyordu.
+# Orta = taban p90, yüksek = taban p99: yalnız sıradan konumlara göre sıra dışı fark işaretlenir.
+# Yeniden ölçmek için: scripts/calibrate_diff.py (bkz. docs/algorithms.md).
+ANOMALY_HIGH_DIFF: float = 87.6        # diff_score > taban p99 → +40 puan
+ANOMALY_MEDIUM_DIFF: float = 80.1      # diff_score > taban p90 → +20 puan
 ANOMALY_MULTI_DISAGREE: int = 3        # 3+ sağlayıcı uyumsuzluğu → +20 puan
+
+# Kaynak sayısına göre taban (p90, p99). Üç kaynakta ölçü "en farklı çift" olduğu için
+# (üç çiftin en büyüğü) dağılım yukarı kayar: sıradan 20 Fransız konumunda (Esri + MapTiler
+# + IGN) p90 %88,8, p99 %99,0. İki kaynaklı eşik orada sıradan konumların ~%15'ini işaretlerdi.
+DIFF_BASELINES: dict[int, tuple[float, float]] = {
+    2: (ANOMALY_MEDIUM_DIFF, ANOMALY_HIGH_DIFF),
+    3: (88.8, 99.0),
+}
+
+
+def diff_baseline(provider_count: int) -> tuple[float, float]:
+    """Kaynak sayısı için (p90, p99) taban eşikleri; ölçülmemiş sayı en yakın ölçülene düşer."""
+    if provider_count in DIFF_BASELINES:
+        return DIFF_BASELINES[provider_count]
+    nearest = min(DIFF_BASELINES, key=lambda n: abs(n - provider_count))
+    return DIFF_BASELINES[nearest]
+
+
+def diff_to_score(diff_score: float, provider_count: int = 2) -> float:
+    """Ham sağlayıcı farkını (%) taban dağılımına göre 0–100 anomali puanına çevirir.
+
+    Ham fark doğrudan puan olamaz: sıradan bir konum bile ~%70 fark verir. Taban p90'a
+    kadar 0, p90→p99 arası 0→50, p99→%100 arası 50→100 (doğrusal).
+    """
+    p90, p99 = diff_baseline(provider_count)
+    if diff_score <= p90:
+        return 0.0
+    if diff_score <= p99:
+        return 50.0 * (diff_score - p90) / (p99 - p90)
+    return min(100.0, 50.0 + 50.0 * (diff_score - p99) / (100.0 - p99))
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +271,7 @@ class ImageAligner:
 
     Examples:
         >>> aligner = ImageAligner()
-        >>> img_a = Image.open("osm_tile.png")
+        >>> img_a = Image.open("esri_tile.png")
         >>> img_b = Image.open("google_tile.png")
         >>> aligned_a, aligned_b = aligner.align_tiles(img_a, img_b)
         >>> aligned_a.size == aligned_b.size
@@ -281,10 +315,20 @@ class ImageAligner:
 
         Examples:
             >>> aligner = ImageAligner()
-            >>> a, b = aligner.align_tiles(tile_osm, tile_google)
+            >>> a, b = aligner.align_tiles(tile_esri, tile_maptiler)
             >>> a.size == b.size
             True
         """
+        # Aynı tile koordinatının karoları aynı coğrafi alanı kapsar; yalnız çözünürlük
+        # farklı olabilir (ör. 256 px ve 512 px "retina" karo). Büyüğü küçüğe ÖLÇEKLENİR.
+        # Eskiden ORB tutmayınca büyük karo ortasından kırpılıyordu: 512'lik karonun orta
+        # 256'lık parçası alanın dörtte biridir, yani başka bir yer karşılaştırılıyordu
+        # (sıradan konumlarda SSIM ~0,03, fark ~%78 — bkz. scripts/calibrate_diff.py).
+        if img1.size != img2.size and img1.width == img1.height and img2.width == img2.height:
+            side = min(img1.width, img2.width)
+            img1 = img1 if img1.width == side else img1.resize((side, side), Image.LANCZOS)
+            img2 = img2 if img2.width == side else img2.resize((side, side), Image.LANCZOS)
+
         cv_img1 = pil_to_cv2(img1)
         cv_img2 = pil_to_cv2(img2)
 
@@ -457,7 +501,7 @@ class PixelDiffAnalyzer:
 
     Examples:
         >>> analyzer = PixelDiffAnalyzer()
-        >>> result = analyzer.compute_diff(tile_osm, tile_google)
+        >>> result = analyzer.compute_diff(tile_esri, tile_maptiler)
         >>> print(f"Fark: %{result.diff_score:.1f}, SSIM: {result.structural_similarity:.3f}")
         Fark: %12.5, SSIM: 0.847
     """
@@ -767,7 +811,7 @@ class PixelDiffAnalyzer:
 
         Args:
             images: Sağlayıcı adı → PIL Image sözlüğü.
-                    Örn: {"osm": img_osm, "google": img_google, ...}
+                    Örn: {"esri": img_esri, "maptiler": img_maptiler, ...}
 
         Returns:
             ProviderComparisonResult — çapraz karşılaştırma sonuçları.
@@ -778,9 +822,9 @@ class PixelDiffAnalyzer:
         Examples:
             >>> analyzer = PixelDiffAnalyzer()
             >>> result = analyzer.compare_providers({
-            ...     "osm": tile_osm,
-            ...     "google": tile_google,
-            ...     "bing": tile_bing,
+            ...     "esri": tile_esri,
+            ...     "maptiler": tile_maptiler,
+            ...     "ign": tile_ign,
             ... })
             >>> 0 <= result.anomaly_score <= 100
             True
@@ -953,7 +997,7 @@ class DiffVisualizer:
     Examples:
         >>> viz = DiffVisualizer()
         >>> path = viz.create_side_by_side(
-        ...     tile_osm, tile_google,
+        ...     tile_esri, tile_maptiler,
         ...     label1="OSM", label2="Google",
         ... )
         >>> os.path.exists(path)

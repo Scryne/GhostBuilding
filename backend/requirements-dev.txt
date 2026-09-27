@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# Test and lint (CI pins the same versions)
+pytest==9.0.3
+pytest-asyncio==1.4.0
+aiosqlite==0.20.0
+ruff==0.16.9

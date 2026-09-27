@@ -12,6 +12,8 @@ OpenAPI dokümantasyonu eksiksiz olarak tanımlanmıştır.
 from __future__ import annotations
 
 import json
+import base64
+import io
 import logging
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -23,14 +25,14 @@ from sqlalchemy import func, text, case, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+# Tarama üçüncü taraf karo sunucularına ve projenin MapTiler kotasına istek atar:
+# yalnız giriş yapmış kullanıcılar başlatabilir.
+from app.services.auth_service import get_current_user
 from app.db.session import get_db
 from app.models.anomaly import Anomaly
 from app.models.anomaly_image import AnomalyImage
 from app.models.verification import Verification
 from app.models.enums import (
-    AnomalyCategory,
-    AnomalyStatus,
-    ImageProvider,
     VerificationVote,
 )
 
@@ -106,6 +108,9 @@ class AnomalyListItem(BaseModel):
     status: str = Field(..., description="Doğrulama durumu", examples=["PENDING"])
     detected_at: Optional[datetime] = Field(None, description="Tespit zamanı (UTC)")
     thumbnail_url: Optional[str] = Field(None, description="Küçük resim URL'si")
+    location_label: Optional[str] = Field(
+        None, description="Konumun okunur adı (biliniyorsa, ör. referans taramadaki tesis adı)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +124,7 @@ class AnomalyImageSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str = Field(..., description="Görüntü UUID")
-    provider: str = Field(..., description="Harita sağlayıcısı", examples=["GOOGLE"])
+    provider: str = Field(..., description="Görüntü kaynağı", examples=["ESRI"])
     image_url: str = Field(..., description="Görüntü erişim URL'si")
     captured_at: Optional[datetime] = Field(None, description="Yakalama zamanı")
     zoom_level: Optional[int] = Field(None, description="Zoom seviyesi")
@@ -181,7 +186,7 @@ class AnomalyDetail(BaseModel):
                 "status": "PENDING",
                 "detected_at": "2026-04-12T10:30:00Z",
                 "verified_at": None,
-                "source_providers": ["GOOGLE", "OSM"],
+                "source_providers": ["esri", "maptiler", "ign"],
                 "detection_methods": ["pixel_diff", "geospatial"],
                 "meta_data": {"task_id": "abc123"},
                 "created_at": "2026-04-12T10:30:00Z",
@@ -212,6 +217,7 @@ class AnomalyDetail(BaseModel):
     source_providers: Optional[List[str]] = Field(None, description="Kaynak sağlayıcılar")
     detection_methods: Optional[List[str]] = Field(None, description="Tespit yöntemleri")
     meta_data: Optional[Dict[str, Any]] = Field(None, description="Ek metadata")
+    location_label: Optional[str] = Field(None, description="Konumun okunur adı (biliniyorsa)")
     created_at: Optional[datetime] = Field(None, description="Kayıt oluşturulma zamanı")
     updated_at: Optional[datetime] = Field(None, description="Son güncelleme zamanı")
 
@@ -338,15 +344,15 @@ class TileCompareResponse(BaseModel):
                 "zoom": 15,
                 "tile_coords": {"x": 19295, "y": 11826, "z": 15},
                 "provider_images": {
-                    "osm": "/tiles/cache/osm_15_19295_11826.png",
-                    "google": "/tiles/cache/google_15_19295_11826.png",
+                    "esri": "data:image/jpeg;base64,/9j/4AAQ...",
+                    "maptiler": "data:image/jpeg;base64,/9j/4AAQ...",
                 },
-                "diff_scores": {"osm_vs_google": 0.23, "osm_vs_bing": 0.67},
+                "diff_scores": {"esri_vs_maptiler": 0.23},
                 "anomaly_indicators": {
-                    "has_significant_diff": True,
-                    "max_diff_pair": "osm_vs_bing",
-                    "max_diff_score": 0.67,
-                    "providers_missing": ["yandex"],
+                    "has_significant_diff": False,
+                    "max_diff_pair": "esri_vs_maptiler",
+                    "max_diff_score": 0.23,
+                    "providers_missing": [],
                 },
             }
         }
@@ -379,6 +385,13 @@ class CategoryCount(BaseModel):
     """Kategori bazında anomali sayısı."""
 
     category: str = Field(..., description="Anomali kategorisi")
+    count: int = Field(..., description="Anomali sayısı")
+
+
+class StatusCount(BaseModel):
+    """Durum bazında anomali sayısı (PENDING / UNDER_REVIEW / VERIFIED / REJECTED)."""
+
+    status: str = Field(..., description="Anomali durumu")
     count: int = Field(..., description="Anomali sayısı")
 
 
@@ -426,6 +439,9 @@ class StatsResponse(BaseModel):
     by_category: List[CategoryCount] = Field(
         default_factory=list, description="Kategori bazında dağılım"
     )
+    by_status: List[StatusCount] = Field(
+        default_factory=list, description="Durum bazında dağılım (doğrulanmış sayısı buradan okunur)"
+    )
     last_30_days_count: int = Field(0, description="Son 30 günde eklenen anomali sayısı")
     top_10: List[TopAnomaly] = Field(
         default_factory=list, description="En yüksek güven skorlu 10 anomali"
@@ -438,6 +454,21 @@ class StatsResponse(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════
 # Yardımcı Fonksiyonlar
 # ═══════════════════════════════════════════════════════════════════════════
+
+
+def _split_csv(value: Optional[str]) -> List[str]:
+    """ "A,B" → ["A", "B"] (boşlukları ve boş öğeleri atar)."""
+    if not value:
+        return []
+    return [part.strip().upper() for part in value.split(",") if part.strip()]
+
+
+def _location_label(meta_data: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Kayıttaki okunur konum adı (referans taraması tesis adını yazar)."""
+    if not meta_data:
+        return None
+    value = meta_data.get("reference_site") or meta_data.get("location_label")
+    return str(value) if value else None
 
 
 async def _get_redis_client():
@@ -480,7 +511,7 @@ async def _check_rate_limit(request: Request) -> None:
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail={
                     "error": "Rate limit exceeded",
-                    "message": f"IP başına saatte en fazla 5 tarama isteği gönderilebilir.",
+                    "message": "IP başına saatte en fazla 5 tarama isteği gönderilebilir.",
                     "retry_after_seconds": max(ttl, 0),
                 },
             )
@@ -530,6 +561,11 @@ async def list_anomalies(
         description="Durum filtresi",
         examples=["PENDING", "VERIFIED"],
     ),
+    sort: str = Query(
+        "newest",
+        description="Sıralama: newest (en yeni) | confidence (en yüksek puan)",
+        pattern="^(newest|confidence)$",
+    ),
     page: int = Query(1, description="Sayfa numarası", ge=1),
     limit: int = Query(20, description="Sayfa başına kayıt sayısı", ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -553,13 +589,15 @@ async def list_anomalies(
     # Güven skoru filtresi
     conditions.append(Anomaly.confidence_score >= min_confidence)
 
-    # Kategori filtresi
-    if category:
-        conditions.append(Anomaly.category == category)
+    # Kategori / durum filtresi — virgülle ayrılmış liste kabul edilir ("PENDING,VERIFIED").
+    # Eskiden tek değerle eşitlik aranıyordu; arayüz liste gönderdiği için Keşfet hep boştu.
+    categories = _split_csv(category)
+    if categories:
+        conditions.append(Anomaly.category.in_(categories))
 
-    # Durum filtresi
-    if status_filter:
-        conditions.append(Anomaly.status == status_filter)
+    statuses = _split_csv(status_filter)
+    if statuses:
+        conditions.append(Anomaly.status.in_(statuses))
 
     # Mekansal filtre — PostGIS ST_DWithin
     if lat is not None and lng is not None:
@@ -589,7 +627,11 @@ async def list_anomalies(
         select(Anomaly)
         .options(selectinload(Anomaly.images))
         .where(and_(*conditions))
-        .order_by(Anomaly.detected_at.desc().nullslast())
+        .order_by(
+            Anomaly.confidence_score.desc().nullslast()
+            if sort == "confidence"
+            else Anomaly.detected_at.desc().nullslast()
+        )
         .offset(offset)
         .limit(limit)
     )
@@ -615,6 +657,7 @@ async def list_anomalies(
                 status=row.status,
                 detected_at=row.detected_at,
                 thumbnail_url=thumbnail,
+                location_label=_location_label(row.meta_data),
             )
         )
 
@@ -645,7 +688,7 @@ async def list_anomalies(
     tags=["anomalies"],
 )
 async def export_anomalies(
-    format: str = Query("json", description="Export formatı: json veya csv", regex="^(json|csv)$"),
+    format: str = Query("json", description="Export formatı: json veya csv", pattern="^(json|csv)$"),
     category: Optional[str] = Query(None, description="Kategori filtresi"),
     min_confidence: float = Query(0.0, description="Minimum güven skoru", ge=0, le=100),
     status_filter: Optional[str] = Query(None, alias="status", description="Durum filtresi"),
@@ -771,6 +814,15 @@ async def get_anomaly_stats(
         for row in category_result.all()
     ]
 
+    # --- Durum bazında dağılım ---
+    status_result = await db.execute(
+        select(Anomaly.status, func.count(Anomaly.id).label("count")).group_by(Anomaly.status)
+    )
+    by_status = [
+        StatusCount(status=row.status or "PENDING", count=row.count)
+        for row in status_result.all()
+    ]
+
     # --- Son 30 gün ---
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     recent_stmt = select(func.count(Anomaly.id)).where(
@@ -800,7 +852,7 @@ async def get_anomaly_stats(
         for row in top_rows
     ]
 
-    from sqlalchemy import cast, String, text
+    from sqlalchemy import cast, String
 
     region_stmt = (
         select(
@@ -824,6 +876,7 @@ async def get_anomaly_stats(
     return StatsResponse(
         total_count=total_count,
         by_category=by_category,
+        by_status=by_status,
         last_30_days_count=last_30_days_count,
         top_10=top_10,
         region_distribution=region_distribution,
@@ -854,7 +907,7 @@ async def compare_tiles(
     providers: Optional[List[str]] = Query(
         None,
         description="Karşılaştırılacak sağlayıcılar (varsayılan: tümü)",
-        examples=["OSM", "GOOGLE"],
+        examples=["esri", "maptiler"],
     ),
 ) -> TileCompareResponse:
     """
@@ -864,7 +917,13 @@ async def compare_tiles(
     2. Her sağlayıcı çifti için pixel-diff skoru hesaplar.
     3. Anomali göstergelerini (önemli fark, eksik sağlayıcı, vb.) döndürür.
     """
-    from app.services.tile_fetcher import TileFetcher, TileProvider, lat_lng_to_tile
+    from app.services.tile_fetcher import (
+        PROVIDER_ATTRIBUTION,
+        TileFetcher,
+        TileProvider,
+        imagery_providers,
+        lat_lng_to_tile,
+    )
 
     x, y, z = lat_lng_to_tile(lat, lng, zoom)
 
@@ -887,8 +946,12 @@ async def compare_tiles(
                 lat, lng, zoom, providers=requested_providers
             )
             for tp, img in tiles.items():
-                cache_path = f"/tiles/cache/{tp.value}_{z}_{x}_{y}.png"
-                provider_images[tp.value] = cache_path
+                # Görüntünün kendisi döner: eskiden hiçbir yerde kaydedilmeyen ve hiçbir
+                # route'un sunmadığı "/tiles/cache/..." yolları dönüyordu (kırık görsel).
+                buffer = io.BytesIO()
+                img.convert("RGB").save(buffer, format="JPEG", quality=85)
+                encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+                provider_images[tp.value] = f"data:image/jpeg;base64,{encoded}"
                 tile_data[tp.value] = img
     except Exception as exc:
         logger.error("Tile karşılaştırma — indirme hatası: %s", exc)
@@ -909,46 +972,44 @@ async def compare_tiles(
     provider_keys = list(tile_data.keys())
 
     # Eksik sağlayıcıları kontrol et
-    all_providers = [tp.value for tp in (requested_providers or list(TileProvider))]
+    all_providers = [tp.value for tp in (requested_providers or imagery_providers(lat, lng))]
     anomaly_indicators["providers_missing"] = [
         p for p in all_providers if p not in provider_keys
     ]
 
-    # Her sağlayıcı çifti için diff hesapla
+    # Her sağlayıcı çifti için diff hesapla. Eskiden var olmayan analyzer.analyze()
+    # çağrılıyor (her çift sessizce -1) ve 0–100 ölçekli skor 0.3 ile kıyaslanıyordu.
     if len(provider_keys) >= 2:
-        try:
-            from app.services.analyzers.pixel_diff import PixelDiffAnalyzer
-            import numpy as np
+        from app.services.analyzers.pixel_diff import PixelDiffAnalyzer, diff_baseline
 
-            analyzer = PixelDiffAnalyzer()
+        analyzer = PixelDiffAnalyzer()
+        for i in range(len(provider_keys)):
+            for j in range(i + 1, len(provider_keys)):
+                p1, p2 = provider_keys[i], provider_keys[j]
+                pair_key = f"{p1}_vs_{p2}"
+                try:
+                    score = analyzer.compute_diff(tile_data[p1], tile_data[p2]).diff_score
+                except Exception as diff_exc:
+                    logger.warning("Diff hesaplama hatası (%s): %s", pair_key, diff_exc)
+                    continue
+                diff_scores[pair_key] = round(score, 2)
+                if score > anomaly_indicators["max_diff_score"]:
+                    anomaly_indicators["max_diff_score"] = round(score, 2)
+                    anomaly_indicators["max_diff_pair"] = pair_key
 
-            for i in range(len(provider_keys)):
-                for j in range(i + 1, len(provider_keys)):
-                    p1, p2 = provider_keys[i], provider_keys[j]
-                    pair_key = f"{p1}_vs_{p2}"
+        # Eşik, sıradan konumların p99'u (kaynak sayısına göre); ölçüm ANALYSIS_ZOOM'da.
+        p99 = diff_baseline(len(provider_keys))[1]
+        anomaly_indicators["has_significant_diff"] = (
+            zoom == settings.ANALYSIS_ZOOM
+            and anomaly_indicators["max_diff_score"] > p99
+        )
+        anomaly_indicators["baseline_p99"] = p99
+        anomaly_indicators["calibrated_zoom"] = settings.ANALYSIS_ZOOM
 
-                    try:
-                        img1 = np.array(tile_data[p1].convert("RGB"))
-                        img2 = np.array(tile_data[p2].convert("RGB"))
-                        diff_result = analyzer.analyze(img1, img2)
-                        score = diff_result.get("diff_score", 0.0)
-                        diff_scores[pair_key] = round(score, 4)
-
-                        if score > anomaly_indicators["max_diff_score"]:
-                            anomaly_indicators["max_diff_score"] = round(score, 4)
-                            anomaly_indicators["max_diff_pair"] = pair_key
-
-                    except Exception as diff_exc:
-                        logger.warning("Diff hesaplama hatası (%s): %s", pair_key, diff_exc)
-                        diff_scores[pair_key] = -1.0
-
-        except ImportError:
-            logger.warning("PixelDiffAnalyzer import edilemiyor — diff skoru hesaplanamayacak")
-        except Exception as exc:
-            logger.warning("Diff analizi genel hatası: %s", exc)
-
-    # Önemli fark eşiği: 0.3
-    anomaly_indicators["has_significant_diff"] = anomaly_indicators["max_diff_score"] > 0.3
+    # Kaynak atıfları (kullanım koşulu gereği arayüzde gösterilir)
+    anomaly_indicators["attribution"] = {
+        key: PROVIDER_ATTRIBUTION[TileProvider(key)] for key in provider_keys
+    }
 
     return TileCompareResponse(
         lat=lat,
@@ -982,6 +1043,7 @@ async def start_scan(
     body: ScanRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    current_user: Any = Depends(get_current_user),
 ) -> ScanResponse:
     """
     Yeni bir anomali taraması başlatır.
@@ -1012,8 +1074,10 @@ async def start_scan(
         center_lat=body.lat,
         center_lng=body.lng,
         radius_km=radius,
+        user_id=current_user.id,
     )
     db.add(scan_job)
+    current_user.submitted_count = (current_user.submitted_count or 0) + 1
     await db.commit()
 
     # Celery görevi başlat
@@ -1289,6 +1353,7 @@ async def get_anomaly_detail(
         source_providers=anomaly.source_providers,
         detection_methods=anomaly.detection_methods,
         meta_data=anomaly.meta_data,
+        location_label=_location_label(anomaly.meta_data),
         created_at=anomaly.created_at,
         updated_at=anomaly.updated_at,
         images=image_schemas,

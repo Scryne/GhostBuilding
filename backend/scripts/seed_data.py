@@ -1,255 +1,169 @@
+"""Referans taraması: demo verisini gerçek analizle üretir.
+
+Eski seed 20 konuma elle yazılmış güven skorları ve var olmayan görsel adresleri
+basıyordu. Bu betik, kamuya açık kaynaklarda adı geçen tesisleri ve karşılaştırma için
+sıradan konumları aynı anomali motorundan geçirir. Veritabanına yalnız motorun eşiği
+geçirdiği sonuçlar yazılır. Konum başına tüm puanlar, eşik altında kalanlar dahil,
+bir JSON raporuna dökülür.
+
+Kullanım (backend/ içinden; DATABASE_URL, MAPTILER_API_KEY tanımlı):
+    python scripts/seed_data.py [--reset] [--rapor ../docs/reference-scan.json]
+
+--reset yalnız motorun ürettiği anomalileri siler (meta_data.reference_scan = true).
+"""
+
+from __future__ import annotations
+
+import argparse
 import asyncio
 import json
-import uuid
-import sys
+import logging
 import os
+import sys
 from datetime import datetime, timezone
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
 
-# Add the parent directory to sys.path so we can import app
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.config import settings
+from sqlalchemy import text  # noqa: E402
 
-# 20 Real-World OSINT Examples
-SEED_DATA = [
-    {
-        "lat": 37.2350, "lng": -115.8111,
-        "category": "IMAGE_DISCREPANCY",
-        "confidence_score": 98.5,
-        "description": "Area 51, Nevada. Significant resolution mismatch and historical imagery inconsistencies across public providers.",
-        "source_providers": ["google", "bing", "yandex"],
-        "detection_methods": ["pixel_diff", "time_series"],
-    },
-    {
-        "lat": 39.0302, "lng": 125.7538,
-        "category": "HIDDEN_STRUCTURE",
-        "confidence_score": 94.2,
-        "description": "East Pyongyang, North Korea. Unmapped subterranean facility entrances visible in satellite view but absent from OSM.",
-        "source_providers": ["google", "osm"],
-        "detection_methods": ["geospatial_mismatch"],
-    },
-    {
-        "lat": 73.3500, "lng": 54.8000,
-        "category": "CENSORED_AREA",
-        "confidence_score": 100.0,
-        "description": "Novaya Zemlya, Russia. Former nuclear testing site heavily pixelated in Yandex and Bing Maps.",
-        "source_providers": ["yandex", "bing"],
-        "detection_methods": ["blur_detection", "fft_analysis"],
-    },
-    {
-        "lat": 31.9166, "lng": 34.8000,
-        "category": "CENSORED_AREA",
-        "confidence_score": 91.0,
-        "description": "Central Israel region. Aerial imagery artificially degraded to 2m/pixel resolution legally mandated limits.",
-        "source_providers": ["google", "bing"],
-        "detection_methods": ["resolution_degradation"],
-    },
-    {
-        "lat": 39.9042, "lng": 116.4074,
-        "category": "IMAGE_DISCREPANCY",
-        "confidence_score": 87.5,
-        "description": "Beijing, China. GCJ-02 coordinate system shift creating artificial misalignment (50-500m) with WGS-84 satellite imagery.",
-        "source_providers": ["osm", "google"],
-        "detection_methods": ["geospatial_shift"],
-    },
-    {
-        "lat": 52.1229, "lng": 5.2813,
-        "category": "GHOST_BUILDING",
-        "confidence_score": 89.1,
-        "description": "Soesterberg, Netherlands. Polygons present in OSM routing but camouflaged/removed in aerial view.",
-        "source_providers": ["osm", "google"],
-        "detection_methods": ["camouflage_detection"],
-    },
-    {
-        "lat": -22.8122, "lng": -43.2505,
-        "category": "HIDDEN_STRUCTURE",
-        "confidence_score": 76.5,
-        "description": "Rio de Janeiro, Brazil. Undocumented structural additions in dense urban favela not matching official city registers.",
-        "source_providers": ["google", "osm"],
-        "detection_methods": ["yolo_building_detection"],
-    },
-    {
-        "lat": 48.8703, "lng": 2.3168,
-        "category": "CENSORED_AREA",
-        "confidence_score": 100.0,
-        "description": "Élysée Palace, Paris, France. High-priority government facility heavily pixelated on domestic providers.",
-        "source_providers": ["bing", "apple"],
-        "detection_methods": ["pixel_block_detection"],
-    },
-    {
-        "lat": 38.6428, "lng": 35.4853,
-        "category": "IMAGE_DISCREPANCY",
-        "confidence_score": 83.4,
-        "description": "Central Anatolia, Turkey. Sudden topological mismatch between summer/winter satellite passes indicating subterranean excavation.",
-        "source_providers": ["google"],
-        "detection_methods": ["time_series"],
-    },
-    {
-        "lat": 34.5221, "lng": 69.1765,
-        "category": "GHOST_BUILDING",
-        "confidence_score": 92.0,
-        "description": "Kabul, Afghanistan. Ghost outlines of former compounds visible in older OSM tiles but completely absent in recent imagery.",
-        "source_providers": ["osm", "bing"],
-        "detection_methods": ["historical_mismatch"],
-    },
-    {
-        "lat": 50.1109, "lng": 8.6821,
-        "category": "CENSORED_AREA",
-        "confidence_score": 88.3,
-        "description": "Frankfurt, Germany. Financial district datacenter roof structures artificially obscured.",
-        "source_providers": ["google"],
-        "detection_methods": ["blur_detection"],
-    },
-    {
-        "lat": 35.5308, "lng": 139.7371,
-        "category": "HIDDEN_STRUCTURE",
-        "confidence_score": 81.2,
-        "description": "Kawasaki, Japan. Industrial zone anomaly with unaccounted thermal/heat exhaust signatures not mapping to known buildings.",
-        "source_providers": ["bing", "osm"],
-        "detection_methods": ["thermal_proxy_detection"],
-    },
-    {
-        "lat": 55.7512, "lng": 37.6184,
-        "category": "CENSORED_AREA",
-        "confidence_score": 99.5,
-        "description": "Kremlin, Moscow, Russia. Complete GIS offset and GPS spoofing zone causing extreme tile tearing.",
-        "source_providers": ["yandex", "google", "bing"],
-        "detection_methods": ["coordinate_spoofing"],
-    },
-    {
-        "lat": 40.7128, "lng": -74.0060,
-        "category": "IMAGE_DISCREPANCY",
-        "confidence_score": 72.1,
-        "description": "New York City, USA. Deep shadow discrepancies in high-rise corridors hiding street-level mobile structures.",
-        "source_providers": ["google", "apple"],
-        "detection_methods": ["shadow_analysis"],
-    },
-    {
-        "lat": 24.7136, "lng": 46.6753,
-        "category": "HIDDEN_STRUCTURE",
-        "confidence_score": 96.7,
-        "description": "Riyadh, Saudi Arabia. Desert facility expansion captured by Yandex but severely outdated/hidden on Google.",
-        "source_providers": ["yandex", "google"],
-        "detection_methods": ["temporal_lag"],
-    },
-    {
-        "lat": 33.5138, "lng": 36.2765,
-        "category": "GHOST_BUILDING",
-        "confidence_score": 85.0,
-        "description": "Damascus, Syria. Flattened neighborhoods still routing active traffic paths in local maps despite total structural loss.",
-        "source_providers": ["osm", "bing"],
-        "detection_methods": ["routing_vs_visual"],
-    },
-    {
-        "lat": -33.8688, "lng": 151.2093,
-        "category": "CENSORED_AREA",
-        "confidence_score": 68.4,
-        "description": "Sydney, Australia. Naval base dockyards obscured entirely by low-poly clouds strictly on certain zoom levels.",
-        "source_providers": ["google", "bing"],
-        "detection_methods": ["cloud_anomaly"],
-    },
-    {
-        "lat": 23.1291, "lng": 113.2644,
-        "category": "IMAGE_DISCREPANCY",
-        "confidence_score": 79.9,
-        "description": "Guangzhou, China. Large scale map splicing detected across major grid coordinates; 15-pixel alignment error.",
-        "source_providers": ["bing", "yandex"],
-        "detection_methods": ["grid_splicing"],
-    },
-    {
-        "lat": 51.5074, "lng": -0.1278,
-        "category": "HIDDEN_STRUCTURE",
-        "confidence_score": 91.5,
-        "description": "London, UK. Subterranean crossrail ventilation shafts appearing as generic commercial properties in public records.",
-        "source_providers": ["osm", "google"],
-        "detection_methods": ["zoning_mismatch"],
-    },
-    {
-        "lat": 37.7749, "lng": -122.4194,
-        "category": "GHOST_BUILDING",
-        "confidence_score": 74.2,
-        "description": "San Francisco, USA. Presidio private estate registered on tax maps but heavily obscured by artificial tree canopies in 3D views.",
-        "source_providers": ["apple", "google"],
-        "detection_methods": ["3d_render_anomaly"],
-    }
+from app.config import settings  # noqa: E402
+from app.db.session import AsyncSessionLocal, engine as db_engine  # noqa: E402
+from app.services.anomaly_engine import AnomalyEngine  # noqa: E402
+
+# (ad, enlem, boylam, tür). "tesis": kamuya açık kaynaklarda adı geçen askeri/nükleer
+# tesis. "kontrol": sıradan konum; motorun bunları işaretlememesi beklenir.
+REFERENCE_SITES: list[tuple[str, float, float, str]] = [
+    ("Groom Lake (Area 51), ABD", 37.2431, -115.7930, "tesis"),
+    ("Pine Gap, Avustralya", -23.7990, 133.7370, "tesis"),
+    ("RAF Menwith Hill, Birleşik Krallık", 54.0086, -1.6897, "tesis"),
+    ("Diego Garcia", -7.3133, 72.4111, "tesis"),
+    ("Yongbyon, Kuzey Kore", 39.7950, 125.7550, "tesis"),
+    ("Natanz, İran", 33.7250, 51.7270, "tesis"),
+    ("Dimona, İsrail", 31.0010, 35.1450, "tesis"),
+    ("Île Longue, Fransa", 48.3055, -4.5140, "tesis"),
+    ("Istres-Le Tubé hava üssü, Fransa", 43.5230, 4.9240, "tesis"),
+    ("Volkel hava üssü, Hollanda", 51.6566, 5.7080, "tesis"),
+    ("Sivastopol körfezi", 44.6167, 33.5250, "tesis"),
+    # Fransa: IGN ortofotolarında hassas alanlar maskelenir; burada üç kaynak karşılaştırılır.
+    ("Brest askeri limanı, Fransa", 48.3830, -4.5000, "tesis"),
+    ("Cherbourg askeri limanı, Fransa", 49.6450, -1.6280, "tesis"),
+    ("Taverny hava üssü (BA 921), Fransa", 49.0270, 2.2170, "tesis"),
+    ("Mont Verdun (BA 942), Fransa", 45.8630, 4.7690, "tesis"),
+    ("CEA Valduc, Fransa", 47.5790, 4.8680, "tesis"),
+    ("Marcoule nükleer sahası, Fransa", 44.1440, 4.7120, "tesis"),
+    ("Saint-Dizier hava üssü (BA 113), Fransa", 48.6360, 4.8990, "tesis"),
+    ("Avord hava üssü (BA 702), Fransa", 47.0530, 2.6330, "tesis"),
+    ("Luxeuil hava üssü (BA 116), Fransa", 47.7870, 6.3640, "tesis"),
+    ("Kadıköy, İstanbul", 40.9903, 29.0290, "kontrol"),
+    ("Berlin Mitte", 52.5200, 13.4050, "kontrol"),
+    ("Paris merkez", 48.8566, 2.3522, "kontrol"),
+    ("Iowa tarım alanı", 42.0308, -93.6319, "kontrol"),
+    # Fransız kontroller kalibrasyon setinde yok (bkz. calibrate_diff.FRANCE_BASELINE).
+    ("Tours merkez", 47.3941, 0.6848, "kontrol"),
+    ("Reims merkez", 49.2583, 4.0317, "kontrol"),
+    ("Montpellier merkez", 43.6108, 3.8767, "kontrol"),
 ]
 
-async def seed_db():
-    print("🌱 Starting database seeding process...")
-    
-    engine = create_async_engine(settings.DATABASE_URL, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+async def reset_reference_anomalies() -> int:
+    async with AsyncSessionLocal() as session:
+        ids = "SELECT id FROM anomalies WHERE meta_data->>'reference_scan' = 'true'"
+        await session.execute(text(f"DELETE FROM anomaly_images WHERE anomaly_id IN ({ids})"))
+        await session.execute(text(f"DELETE FROM verifications WHERE anomaly_id IN ({ids})"))
+        result = await session.execute(
+            text("DELETE FROM anomalies WHERE meta_data->>'reference_scan' = 'true'")
+        )
+        await session.commit()
+        return result.rowcount or 0
+
+
+async def tag_reference_anomalies(name: str, kind: str, since: datetime) -> int:
+    """Bu konum için motorun az önce yazdığı kayıtlara referans etiketini ekler."""
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text(
+                """
+                UPDATE anomalies
+                SET meta_data = COALESCE(meta_data, '{}'::jsonb)
+                    || jsonb_build_object('reference_scan', true,
+                                          'reference_site', CAST(:name AS text),
+                                          'reference_kind', CAST(:kind AS text))
+                WHERE created_at >= :since
+                  AND (meta_data->>'reference_scan') IS NULL
+                """
+            ),
+            {"name": name, "kind": kind, "since": since},
+        )
+        await session.commit()
+        return result.rowcount or 0
+
+
+async def run(reset: bool) -> list[dict[str, object]]:
+    if reset:
+        print(f"Önceki referans anomalileri silindi: {await reset_reference_anomalies()}")
+
+    engine = AnomalyEngine(min_confidence=settings.ANOMALY_CONFIDENCE_THRESHOLD)
+    rows: list[dict[str, object]] = []
+    for name, lat, lng, kind in REFERENCE_SITES:
+        started = datetime.now(timezone.utc)
+        candidates = await engine.analyze(lat, lng, settings.ANALYSIS_ZOOM)
+        tagged = await tag_reference_anomalies(name, kind, started) if candidates else 0
+        breakdown = engine.last_run.get("score_breakdown") or {}
+        rows.append({
+            "konum": name,
+            "tur": kind,
+            "lat": lat,
+            "lng": lng,
+            "kaynaklar": engine.last_run.get("providers", []),
+            "ham_piksel_farki": breakdown.get("raw_max_diff"),
+            "ham_sansur": breakdown.get("raw_censorship"),
+            "piksel_puani": breakdown.get("pixel_diff_score"),
+            "bulaniklik_puani": breakdown.get("blur_censorship_score"),
+            "anomaliler": [
+                {"kategori": c.category, "guven": round(c.confidence_score, 1)} for c in candidates
+            ],
+            "yazilan": tagged,
+        })
+        flags = ", ".join(f"{c.category} {c.confidence_score:.0f}" for c in candidates) or "—"
+        print(
+            f"  {name:36s} fark={breakdown.get('raw_max_diff', 0):5.1f} "
+            f"sansür={breakdown.get('raw_censorship', 0):4.0f}  → {flags}"
+        )
+    return rows
+
+
+async def main_async(args: argparse.Namespace) -> None:
     try:
-        async with async_session() as session:
-            # Check if anomalies already exist
-            result = await session.execute(text("SELECT COUNT(*) FROM anomalies"))
-            count = result.scalar()
-            
-            if count > 0:
-                print(f"⚠️ Database already contains {count} anomalies. Clearing table...")
-                await session.execute(text("DELETE FROM anomaly_images"))
-                await session.execute(text("DELETE FROM verifications"))
-                await session.execute(text("DELETE FROM anomalies"))
-                await session.commit()
-            
-            print(f"Inserting {len(SEED_DATA)} anomalies...")
-            
-            for item in SEED_DATA:
-                anomaly_id = str(uuid.uuid4())
-                stmt = text("""
-                    INSERT INTO anomalies 
-                    (id, lat, lng, geom, category, confidence_score, description, status, source_providers, detection_methods, created_at, updated_at) 
-                    VALUES 
-                    (:id, :lat, :lng, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :category, :confidence_score, :description, :status, :source_providers, :detection_methods, :created_at, :updated_at)
-                """)
-                
-                await session.execute(stmt, {
-                    "id": anomaly_id,
-                    "lat": item["lat"],
-                    "lng": item["lng"],
-                    "category": item["category"],
-                    "confidence_score": item["confidence_score"],
-                    "description": item["description"],
-                    "status": "VERIFIED",
-                    "source_providers": json.dumps(item["source_providers"]),
-                    "detection_methods": json.dumps(item["detection_methods"]),
-                    "created_at": datetime.now(timezone.utc),
-                    "updated_at": datetime.now(timezone.utc)
-                })
-
-                # Insert 2 fake satellite images per anomaly
-                for provider in item["source_providers"][:2]:
-                    image_id = str(uuid.uuid4())
-                    img_stmt = text("""
-                        INSERT INTO anomaly_images 
-                        (id, anomaly_id, provider, image_url, image_type, captured_at, resolution, metadata_json) 
-                        VALUES 
-                        (:id, :anomaly_id, :provider, :image_url, :image_type, :captured_at, :resolution, :metadata_json)
-                    """)
-                    await session.execute(img_stmt, {
-                        "id": image_id,
-                        "anomaly_id": anomaly_id,
-                        "provider": provider,
-                        "image_url": f"https://api.ghostbuilding.io/images/mock_{provider}_{anomaly_id[:8]}.jpg",
-                        "image_type": "SATELLITE",
-                        "captured_at": datetime.now(timezone.utc),
-                        "resolution": 0.5,
-                        "metadata_json": '{"mock": true}'
-                    })
-
-            await session.commit()
-            print("✅ Seeding completed successfully!")
-            
-    except Exception as e:
-        print(f"❌ Error during seeding: {e}")
+        rows = await run(args.reset)
     finally:
-        await engine.dispose()
+        await db_engine.dispose()
+
+    flagged = [r for r in rows if r["anomaliler"]]
+    controls_flagged = [r for r in flagged if r["tur"] == "kontrol"]
+    print(
+        f"\n{len(rows)} konum tarandı, {len(flagged)} konumda anomali "
+        f"(kontrol konumlarında: {len(controls_flagged)})."
+    )
+    if args.rapor:
+        report = {
+            "tarih": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "zoom": settings.ANALYSIS_ZOOM,
+            "esik": settings.ANOMALY_CONFIDENCE_THRESHOLD,
+            "konumlar": rows,
+        }
+        with open(args.rapor, "w", encoding="utf-8") as fh:
+            json.dump(report, fh, ensure_ascii=False, indent=1)
+        print(f"Rapor: {args.rapor}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--reset", action="store_true", help="önceki referans anomalilerini sil")
+    parser.add_argument("--rapor", default=None, help="konum başına puanları JSON'a yaz")
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.WARNING)
+    asyncio.run(main_async(args))
+
 
 if __name__ == "__main__":
-    asyncio.run(seed_db())
+    main()

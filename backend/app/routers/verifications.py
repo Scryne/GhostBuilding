@@ -18,7 +18,7 @@ Otomatik Durum Değişimi:
     5+ oy AND confirm_ratio < 0.25 → REJECTED
 
 Trusted Verifier:
-    trust_score > 4.0 → oy 2× ağırlıklı
+    trust_score > 55 → oy 2× ağırlıklı (başlangıç 50)
     Doğru tahmin → trust_score + 0.5
 """
 
@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict, field_validator
-from sqlalchemy import and_, func, select, case
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -49,7 +49,9 @@ router = APIRouter()
 # Sabitler
 # ═══════════════════════════════════════════════════════════════════════════
 
-TRUSTED_VERIFIER_THRESHOLD = 4.0     # trust_score eşiği — 2× ağırlık
+# trust_score 0–100 ölçeğinde, 50'den başlar, doğru tahminde +0.5. Eskiden eşik 4.0'dı
+# (0–5 ölçeği); her kullanıcı ilk oyundan itibaren "güvenilir" sayılıp 2× ağırlık alıyordu.
+TRUSTED_VERIFIER_THRESHOLD = 55.0    # başlangıçtan en az 10 net doğru tahmin → 2× ağırlık
 TRUSTED_VOTE_WEIGHT = 2.0            # Güvenilir doğrulayıcı oy çarpanı
 NORMAL_VOTE_WEIGHT = 1.0             # Normal oy ağırlığı
 
@@ -138,7 +140,7 @@ class VerificationItem(BaseModel):
     vote: str = Field(..., description="Oy: CONFIRM / DENY / UNCERTAIN")
     comment: Optional[str] = Field(None, description="Yorum")
     is_trusted_verifier: bool = Field(
-        False, description="Trusted verifier badge (trust_score > 4.0)"
+        False, description="Güvenilir doğrulayıcı (trust_score > 55)"
     )
     vote_weight: float = Field(1.0, description="Oy ağırlığı")
     created_at: Optional[datetime] = Field(None, description="Oy tarihi")
@@ -208,7 +210,7 @@ async def _compute_weighted_votes(
     """
     Anomali için ağırlıklı oy istatistiklerini hesaplar.
 
-    Trusted verifier (trust_score > 4.0) oyları 2× ağırlıkla sayılır.
+    Güvenilir doğrulayıcı (trust_score > 55) oyları 2× ağırlıkla sayılır.
     UNCERTAIN oylar oran hesabına dahil edilmez.
 
     Args:

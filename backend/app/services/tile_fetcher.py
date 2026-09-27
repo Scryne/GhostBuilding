@@ -1,11 +1,17 @@
 """
-tile_fetcher.py — Asenkron harita tile indirme servisi.
+tile_fetcher.py — Asenkron uydu/harita tile indirme servisi.
 
-Farklı harita sağlayıcılarından (OSM, Google, Bing, Yandex) tile
-görüntülerini indirir. Redis önbellekleme, retry logic, rate limiting
-ve User-Agent rotasyonu destekler.
+Görüntü yalnız **kullanım koşulları buna izin veren** kaynaklardan, projeyi dürüstçe
+tanıtan tek bir User-Agent ile çekilir (2026-09-26 kararı):
 
-Wayback Machine CDX API üzerinden tarihsel tile snapshot'ları sorgular.
+- **Esri World Imagery** — güncel yüksek çözünürlüklü uydu mozaiği (anahtarsız, atıf zorunlu).
+- **MapTiler Satellite** — bağımsız ikinci uydu kaynağı (``MAPTILER_API_KEY`` ile).
+- **OpenStreetMap** — harita çizimi; yalnız görüntüleme içindir, fotoğraflarla piksel
+  karşılaştırmasına girmez (çizim ile fotoğraf her zaman "yüksek fark" verir).
+- **Esri World Imagery Wayback** — Esri'nin resmî tarihsel sürüm arşivi (zaman serisi).
+
+Önceki sürüm Google/Bing/Yandex'in resmî olmayan tile uçlarını rastgele User-Agent ve
+sahte Referer ile çekiyordu; sağlayıcı koşullarına ve OSM tile politikasına aykırıydı.
 """
 
 from __future__ import annotations
@@ -19,12 +25,15 @@ import random
 import time
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import httpx
 from PIL import Image
 
 from app.config import settings
+
+if TYPE_CHECKING:
+    import redis.asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -55,41 +64,117 @@ TILE_CACHE_TTL: int = 86_400  # 24 saat (saniye)
 MAX_RETRIES: int = 3
 RATE_LIMIT_PER_SECOND: int = 10  # sağlayıcı başına
 
-USER_AGENTS: List[str] = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 "
-    "(KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 "
-    "(KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
-]
+# Tek, dürüst kimlik: OSM tile politikası uygulamayı tanımlayan bir User-Agent ister.
+USER_AGENT: str = "GhostBuilding/0.2 (+https://github.com/Scryne/GhostBuilding)"
 
 
 class TileProvider(str, Enum):
-    """Desteklenen harita sağlayıcıları."""
+    """Desteklenen görüntü kaynakları."""
 
+    ESRI = "esri"
+    MAPTILER = "maptiler"
+    IGN = "ign"
     OSM = "osm"
-    GOOGLE = "google"
-    BING = "bing"
-    YANDEX = "yandex"
 
 
-# Sağlayıcı URL şablonları
+# Sağlayıcı URL şablonları (Esri: satır/sütun sırası {z}/{y}/{x}).
 PROVIDER_URL_TEMPLATES: Dict[TileProvider, str] = {
+    TileProvider.ESRI: (
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/"
+        "tile/{z}/{y}/{x}"
+    ),
+    TileProvider.MAPTILER: "https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key={key}",
+    # IGN Géoplateforme ortofoto (Fransa, açık lisans, anahtarsız WMTS).
+    TileProvider.IGN: (
+        "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0"
+        "&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM"
+        "&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/jpeg"
+    ),
     TileProvider.OSM: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    TileProvider.GOOGLE: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-    # Bing quadkey tabanlı olduğu için ayrı işlenir
-    TileProvider.BING: (
-        "https://ecn.t{subdomain}.tiles.virtualearth.net/tiles/a{quadkey}"
-        ".jpeg?g=587&mkt=en-US&n=z"
-    ),
-    TileProvider.YANDEX: (
-        "https://sat01.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}"
-    ),
 }
+
+# Arayüzde ve raporda gösterilmesi ZORUNLU atıflar (kaynakların kullanım koşulu).
+# Açıklama metinlerinde kullanılan okunur adlar.
+PROVIDER_NAMES: Dict[str, str] = {
+    "esri": "Esri World Imagery",
+    "maptiler": "MapTiler Satellite",
+    "ign": "IGN Ortofoto",
+    "osm": "OpenStreetMap",
+}
+
+
+def provider_name(key: Optional[str]) -> str:
+    """Kaynak anahtarının okunur adı (bilinmiyorsa anahtarın kendisi)."""
+    if not key:
+        return "bilinmeyen kaynak"
+    return PROVIDER_NAMES.get(key.lower(), key)
+
+
+PROVIDER_ATTRIBUTION: Dict[TileProvider, str] = {
+    TileProvider.ESRI: "Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    TileProvider.MAPTILER: "© MapTiler",
+    TileProvider.IGN: "© IGN – Géoplateforme (Licence Ouverte Etalab 2.0)",
+    TileProvider.OSM: "© OpenStreetMap contributors",
+}
+
+# Uydu fotoğrafı veren kaynaklar — piksel/blur karşılaştırması yalnız bunlar arasında yapılır.
+IMAGERY_PROVIDERS: Tuple[TileProvider, ...] = (
+    TileProvider.ESRI,
+    TileProvider.MAPTILER,
+    TileProvider.IGN,
+)
+
+# Bölgesel kaynakların kapsama kutusu (enlem_min, boylam_min, enlem_maks, boylam_maks).
+# Kutu kaba bir ön süzgeçtir; kapsama dışındaki düz (boş) karolar ayrıca reddedilir.
+REGIONAL_COVERAGE: Dict[TileProvider, Tuple[float, float, float, float]] = {
+    TileProvider.IGN: (41.3, -5.2, 51.1, 9.6),  # Fransa anakarası + Korsika
+}
+
+# Standart sapması bunun altındaki karo "görüntü yok" sayılır (kapsama dışı beyaz karo).
+BLANK_TILE_STD: float = 1.0
+
+
+class TileUnavailable(Exception):
+    """Kaynak bu karo için görüntü vermiyor (kapsama dışı / 4xx). Yeniden denenmez."""
+
+
+def _is_blank(img: Image.Image) -> bool:
+    """Tek renkli (ör. kapsama dışı beyaz) karo mu."""
+    from PIL import ImageStat
+
+    return max(ImageStat.Stat(img.convert("L")).stddev) < BLANK_TILE_STD
+
+
+def provider_configured(provider: TileProvider) -> bool:
+    """Sağlayıcı kullanılabilir mi (anahtar gerektirenlerde anahtar tanımlı mı)."""
+    if provider == TileProvider.MAPTILER:
+        return bool(settings.MAPTILER_API_KEY)
+    return True
+
+
+def covers(provider: TileProvider, lat: float, lng: float) -> bool:
+    """Bölgesel kaynak bu noktayı kapsıyor mu (küresel kaynaklar her yeri kapsar)."""
+    box = REGIONAL_COVERAGE.get(provider)
+    if box is None:
+        return True
+    lat_min, lng_min, lat_max, lng_max = box
+    return lat_min <= lat <= lat_max and lng_min <= lng <= lng_max
+
+
+def imagery_providers(lat: Optional[float] = None, lng: Optional[float] = None) -> List[TileProvider]:
+    """Yapılandırılmış uydu kaynakları (karşılaştırma için varsayılan küme).
+
+    Konum verilirse o noktayı kapsayan bölgesel kaynaklar (ör. Fransa'da IGN) eklenir;
+    konum yoksa yalnız küresel kaynaklar döner.
+    """
+    result = []
+    for p in IMAGERY_PROVIDERS:
+        if not provider_configured(p):
+            continue
+        if p in REGIONAL_COVERAGE and (lat is None or lng is None or not covers(p, lat, lng)):
+            continue
+        result.append(p)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -272,9 +357,8 @@ class TileFetcher:
     """
     Harita tile'larını asenkron olarak indiren servis.
 
-    Farklı sağlayıcılardan (OSM, Google, Bing, Yandex) tile görüntülerini
-    indirir. Redis önbellekleme, otomatik retry, rate limiting ve User-Agent
-    rotasyonu destekler.
+    Esri World Imagery, MapTiler Satellite ve OSM'den tile görüntülerini indirir.
+    Redis önbellekleme, otomatik retry ve rate limiting destekler.
 
     Attributes:
         _client: Paylaşılan httpx async HTTP client.
@@ -315,11 +399,6 @@ class TileFetcher:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def _random_user_agent() -> str:
-        """Rastgele bir User-Agent string'i seçer."""
-        return random.choice(USER_AGENTS)
-
-    @staticmethod
     def _cache_key(provider: str, z: int, x: int, y: int) -> str:
         """Redis önbellek anahtarı üretir."""
         return f"tile:{provider}:{z}:{x}:{y}"
@@ -338,12 +417,10 @@ class TileFetcher:
             Tam tile URL'si.
         """
         template = PROVIDER_URL_TEMPLATES[provider]
-
-        if provider == TileProvider.BING:
-            quadkey = tile_to_quadkey(x, y, z)
-            subdomain = random.choice(["0", "1", "2", "3"])
-            return template.format(quadkey=quadkey, subdomain=subdomain)
-
+        if provider == TileProvider.MAPTILER:
+            if not settings.MAPTILER_API_KEY:
+                raise RuntimeError("MapTiler için MAPTILER_API_KEY tanımlı değil.")
+            return template.format(z=z, x=x, y=y, key=settings.MAPTILER_API_KEY)
         return template.format(z=z, x=x, y=y)
 
     def _build_headers(self, provider: TileProvider) -> Dict[str, str]:
@@ -356,18 +433,10 @@ class TileFetcher:
         Returns:
             HTTP başlıkları sözlüğü.
         """
-        headers: Dict[str, str] = {
-            "User-Agent": self._random_user_agent(),
+        return {
+            "User-Agent": USER_AGENT,
             "Accept": "image/png,image/jpeg,image/*;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://www.openstreetmap.org/",
         }
-
-        # Bing API anahtarı varsa header'a ekle
-        if provider == TileProvider.BING and settings.BING_MAPS_API_KEY:
-            headers["BingMapsKey"] = settings.BING_MAPS_API_KEY
-
-        return headers
 
     async def _cache_get(self, key: str) -> Optional[bytes]:
         """Redis'ten önbellek verisini okur."""
@@ -413,7 +482,7 @@ class TileFetcher:
         yeniden dener.
 
         Args:
-            provider: Harita sağlayıcısı (OSM, Google, Bing, Yandex).
+            provider: Görüntü kaynağı (Esri, MapTiler, OSM).
             z: Zoom seviyesi (0–20).
             x: Tile X koordinatı.
             y: Tile Y koordinatı.
@@ -465,6 +534,8 @@ class TileFetcher:
                 # Geçerli bir görüntü mü kontrol et
                 img = Image.open(io.BytesIO(img_bytes))
                 img.load()  # lazy decode'u zorla
+                if provider in REGIONAL_COVERAGE and _is_blank(img):
+                    raise TileUnavailable(f"[{provider.value}] kapsama dışı (boş karo)")
 
                 # Başarılı — önbelleğe al
                 await self._cache_set(cache_key, img_bytes)
@@ -477,7 +548,24 @@ class TileFetcher:
                 )
                 return img
 
-            except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+            except TileUnavailable:
+                raise
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                if 400 <= status < 500 and status != 429:
+                    raise TileUnavailable(
+                        f"[{provider.value}] HTTP {status}: karo yok"
+                    ) from exc
+                last_exc = exc
+                if attempt < MAX_RETRIES:
+                    backoff = (2 ** attempt) + random.uniform(0, 1)
+                    logger.warning(
+                        "[%s] İstek başarısız (deneme %d/%d): %s — "
+                        "%.1f sn sonra tekrar deneniyor",
+                        provider.value, attempt, MAX_RETRIES, str(exc), backoff,
+                    )
+                    await asyncio.sleep(backoff)
+            except httpx.RequestError as exc:
                 last_exc = exc
                 if attempt < MAX_RETRIES:
                     backoff = (2 ** attempt) + random.uniform(0, 1)
@@ -490,8 +578,6 @@ class TileFetcher:
                         str(exc),
                         backoff,
                     )
-                    # Retry'da farklı User-Agent dene
-                    headers["User-Agent"] = self._random_user_agent()
                     await asyncio.sleep(backoff)
                 else:
                     logger.error(
@@ -531,7 +617,7 @@ class TileFetcher:
         providers: Optional[List[TileProvider]] = None,
     ) -> Dict[TileProvider, Image.Image]:
         """
-        Tüm desteklenen sağlayıcılardan aynı konumun tile'larını indirir.
+        Aynı konumun tile'larını birden çok kaynaktan eş zamanlı indirir.
 
         Verilen koordinatı tile koordinatlarına çevirir ve her sağlayıcıdan
         eş zamanlı olarak indirir. Başarısız sağlayıcılar sonuçtan çıkarılır
@@ -541,7 +627,8 @@ class TileFetcher:
             lat: Enlem (derece).
             lng: Boylam (derece).
             zoom: Zoom seviyesi (0–20).
-            providers: İndirilecek sağlayıcılar listesi. None ise hepsi.
+            providers: İndirilecek kaynaklar. None ise yapılandırılmış UYDU kaynakları
+                (OSM çizimi fotoğraflarla karşılaştırılmaz).
 
         Returns:
             {TileProvider: PIL.Image} sözlüğü. Başarısız sağlayıcılar
@@ -551,17 +638,20 @@ class TileFetcher:
             >>> async with TileFetcher() as fetcher:
             ...     tiles = await fetcher.fetch_all_providers(41.0, 29.0, 15)
             ...     list(tiles.keys())
-            [<TileProvider.OSM: 'osm'>, ...]
+            [<TileProvider.ESRI: 'esri'>, <TileProvider.MAPTILER: 'maptiler'>]
         """
         x, y, z = lat_lng_to_tile(lat, lng, zoom)
 
         if providers is None:
-            providers = list(TileProvider)
+            providers = imagery_providers(lat, lng)
 
         async def _safe_fetch(provider: TileProvider) -> Tuple[TileProvider, Optional[Image.Image]]:
             try:
                 img = await self.fetch_tile(provider, z, x, y)
                 return (provider, img)
+            except TileUnavailable as exc:
+                logger.info("%s", exc)
+                return (provider, None)
             except Exception as exc:
                 logger.error(
                     "[%s] fetch_all_providers sırasında hata: %s",
@@ -581,38 +671,48 @@ class TileFetcher:
 
 
 # ---------------------------------------------------------------------------
-# WaybackFetcher — Tarihsel tile snapshot'ları
+# WaybackFetcher — Esri World Imagery Wayback (resmî tarihsel sürüm arşivi)
 # ---------------------------------------------------------------------------
 
 
 class WaybackFetcher:
     """
-    Wayback Machine CDX API üzerinden tarihsel harita tile arşivlerini sorgular.
+    Esri World Imagery Wayback sürümlerinden bir konumun tarihsel görüntülerini getirir.
 
-    Internet Archive'ın CDX sunucusunu kullanarak belirli bir konumun
-    harita tile'larının geçmiş snapshot'larını bulur.
+    Esri, World Imagery'nin her yayımlanan sürümünü tarihli olarak saklar (2014'ten bu
+    yana 190+ sürüm). Bir konumun görüntüsü çoğu sürümde değişmez; bu yüzden tarih
+    aralığındaki sürümlerden eşit aralıklı bir örnek alınır, tile indirilir ve içerik
+    özetine (SHA-1) göre tekrarlar elenir — yalnız görüntünün gerçekten değiştiği anlar kalır.
+
+    Önceki sürüm Internet Archive'daki Google/Bing/Yandex tile kopyalarını arıyordu; hem
+    kaynak koşullarına aykırıydı hem de CDX sorgusundaki tekrarlanan ``filter`` anahtarı
+    yüzünden "yalnız HTTP 200" koşulu sessizce düşüyordu.
 
     Examples:
         >>> async with WaybackFetcher() as wb:
         ...     snapshots = await wb.fetch_historical(
         ...         lat=41.0, lng=29.0, zoom=15,
-        ...         date_from=datetime(2020, 1, 1),
-        ...         date_to=datetime(2024, 1, 1),
+        ...         date_from=datetime(2016, 1, 1),
+        ...         date_to=datetime(2026, 1, 1),
         ...     )
         ...     len(snapshots) <= 10
         True
     """
 
-    CDX_API_URL: str = "http://web.archive.org/cdx/search/cdx"
+    CONFIG_URL: str = (
+        "https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json"
+    )
     MAX_SNAPSHOTS: int = 10
 
     def __init__(self) -> None:
         self._client: Optional[httpx.AsyncClient] = None
+        self._images: Dict[str, Image.Image] = {}
 
     async def __aenter__(self) -> "WaybackFetcher":
         self._client = httpx.AsyncClient(
             timeout=httpx.Timeout(60.0, connect=15.0),
             follow_redirects=True,
+            headers={"User-Agent": USER_AGENT},
         )
         return self
 
@@ -621,93 +721,39 @@ class WaybackFetcher:
             await self._client.aclose()
             self._client = None
 
-    @staticmethod
-    def _build_tile_url_pattern(
-        provider: TileProvider,
-        z: int,
-        x: int,
-        y: int,
-    ) -> str:
-        """
-        CDX API için aranacak URL kalıbını oluşturur.
-
-        Args:
-            provider: Harita sağlayıcısı.
-            z: Zoom seviyesi.
-            x: Tile X koordinatı.
-            y: Tile Y koordinatı.
-
-        Returns:
-            CDX sorgusunda kullanılacak URL string'i.
-        """
-        patterns: Dict[TileProvider, str] = {
-            TileProvider.OSM: f"tile.openstreetmap.org/{z}/{x}/{y}.png",
-            TileProvider.GOOGLE: f"mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-            TileProvider.BING: f"ecn.t*.tiles.virtualearth.net/tiles/a*",
-            TileProvider.YANDEX: f"sat01.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}",
-        }
-        return patterns.get(provider, patterns[TileProvider.OSM])
-
-    async def _query_cdx(
-        self,
-        url_pattern: str,
-        date_from: datetime,
-        date_to: datetime,
-    ) -> List[Dict[str, str]]:
-        """
-        CDX API'yi sorgular ve snapshot listesi döndürür.
-
-        Args:
-            url_pattern: Aranacak URL kalıbı.
-            date_from: Başlangıç tarihi.
-            date_to: Bitiş tarihi.
-
-        Returns:
-            Her snapshot için {timestamp, url, status, mime, digest} sözlükleri.
-
-        Raises:
-            httpx.HTTPStatusError: CDX API hata döndürürse.
-        """
+    def _require_client(self) -> httpx.AsyncClient:
         if self._client is None:
             raise RuntimeError(
                 "WaybackFetcher context manager ile kullanılmalı: "
                 "'async with WaybackFetcher() as wb: ...'"
             )
+        return self._client
 
-        params = {
-            "url": url_pattern,
-            "matchType": "prefix",
-            "output": "json",
-            "fl": "timestamp,original,statuscode,mimetype,digest",
-            "filter": "statuscode:200",
-            "filter": "mimetype:image/.*",
-            "from": date_from.strftime("%Y%m%d%H%M%S"),
-            "to": date_to.strftime("%Y%m%d%H%M%S"),
-            "limit": self.MAX_SNAPSHOTS * 3,  # fazla çek, sonra filtrele
-            "collapse": "timestamp:8",  # günde en fazla 1 kayıt
-        }
-
-        logger.info("CDX API sorgusu: %s", url_pattern)
-
-        response = await self._client.get(
-            self.CDX_API_URL,
-            params=params,
-            headers={"User-Agent": random.choice(USER_AGENTS)},
-        )
+    async def list_releases(self) -> List[Dict[str, object]]:
+        """Esri Wayback sürümlerini tarih sırasıyla döndürür: {release, date, url_template}."""
+        response = await self._require_client().get(self.CONFIG_URL)
         response.raise_for_status()
+        releases: List[Dict[str, object]] = []
+        for release, item in response.json().items():
+            title = str(item.get("itemTitle", ""))
+            # "World Imagery (Wayback 2014-02-20)"
+            try:
+                date = datetime.strptime(title.rsplit(" ", 1)[-1].rstrip(")"), "%Y-%m-%d")
+            except ValueError:
+                continue
+            releases.append(
+                {"release": int(release), "date": date, "url_template": item.get("itemURL", "")}
+            )
+        releases.sort(key=lambda r: r["date"])  # type: ignore[arg-type,return-value]
+        return releases
 
-        data = response.json()
-        if not data or len(data) < 2:
-            return []
-
-        # İlk satır başlık
-        headers_row = data[0]
-        results: List[Dict[str, str]] = []
-        for row in data[1:]:
-            entry = dict(zip(headers_row, row))
-            results.append(entry)
-
-        return results
+    @staticmethod
+    def _spread(items: List[Dict[str, object]], count: int) -> List[Dict[str, object]]:
+        """Listeden ilk ve son dahil eşit aralıklı en fazla ``count`` öğe seçer."""
+        if len(items) <= count:
+            return items
+        step = (len(items) - 1) / (count - 1)
+        return [items[round(i * step)] for i in range(count)]
 
     async def fetch_historical(
         self,
@@ -717,145 +763,70 @@ class WaybackFetcher:
         date_from: datetime,
         date_to: datetime,
         *,
-        provider: TileProvider = TileProvider.OSM,
+        provider: TileProvider = TileProvider.ESRI,
     ) -> List[Dict[str, object]]:
         """
-        Belirtilen konum ve tarih aralığı için tarihsel tile snapshot'larını döndürür.
+        Tarih aralığındaki Esri Wayback sürümlerinden, görüntünün DEĞİŞTİĞİ anları döndürür.
 
-        Wayback Machine CDX API üzerinden harita tile arşivini tarihsel
-        olarak sorgular ve en fazla 10 benzersiz snapshot döndürür.
-
-        Her snapshot şu bilgileri içerir:
-        - timestamp: Arşivlenme zamanı (ISO 8601)
-        - wayback_url: Wayback Machine erişim URL'si
-        - original_url: Orijinal tile URL'si
-        - digest: İçerik hash'i (değişiklik tespiti için)
-        - tile_coords: (x, y, z) tile koordinatları
-
-        Args:
-            lat: Enlem (derece).
-            lng: Boylam (derece).
-            zoom: Zoom seviyesi (0–20).
-            date_from: Sorgu başlangıç tarihi.
-            date_to: Sorgu bitiş tarihi.
-            provider: Hangi sağlayıcının arşivi sorgulanacak (varsayılan OSM).
-
-        Returns:
-            En fazla 10 snapshot sözlüğü listesi, kronolojik sırada.
-
-        Raises:
-            ValueError: Geçersiz parametreler.
-            httpx.HTTPStatusError: CDX API hata döndürürse.
-
-        Examples:
-            >>> async with WaybackFetcher() as wb:
-            ...     results = await wb.fetch_historical(
-            ...         41.0, 29.0, 15,
-            ...         datetime(2020, 1, 1),
-            ...         datetime(2024, 12, 31),
-            ...     )
-            ...     for snap in results:
-            ...         print(snap["timestamp"], snap["wayback_url"])
+        Her kayıt: ``timestamp`` (sürüm tarihi, ISO 8601), ``wayback_url`` (tile adresi),
+        ``release``, ``digest`` (içerik SHA-1), ``tile_coords``, ``provider``.
+        ``provider`` geriye dönük uyumluluk içindir; tarihsel arşiv yalnız Esri'dedir.
         """
         if date_from >= date_to:
             raise ValueError("date_from, date_to'dan önce olmalıdır.")
 
         x, y, z = lat_lng_to_tile(lat, lng, zoom)
-
-        url_pattern = self._build_tile_url_pattern(provider, z, x, y)
-
         try:
-            raw_snapshots = await self._query_cdx(url_pattern, date_from, date_to)
-        except httpx.HTTPStatusError as exc:
-            logger.error("CDX API hatası: %s", str(exc))
-            raise
+            releases = [
+                r for r in await self.list_releases() if date_from <= r["date"] <= date_to  # type: ignore[operator]
+            ]
         except Exception as exc:
-            logger.error("CDX sorgu hatası: %s", str(exc))
+            logger.error("Esri Wayback sürüm listesi alınamadı: %s", exc)
             return []
 
-        # Benzersiz digest'lere göre filtrele (aynı içerik tekrarını atla)
-        seen_digests: set[str] = set()
-        unique_snapshots: List[Dict[str, object]] = []
-
-        for snap in raw_snapshots:
-            digest = snap.get("digest", "")
-            if digest in seen_digests:
+        # Aynı görüntü çoğu sürümde tekrarlanır; örneklemi geniş tut, tekrarları ele.
+        candidates = self._spread(releases, self.MAX_SNAPSHOTS * 2)
+        snapshots: List[Dict[str, object]] = []
+        seen: set[str] = set()
+        for release in candidates:
+            url = str(release["url_template"]).format(level=z, row=y, col=x)
+            img = await self.fetch_snapshot_image(url)
+            if img is None:
                 continue
-            seen_digests.add(digest)
-
-            # Wayback Machine erişim URL'si oluştur
-            timestamp = snap.get("timestamp", "")
-            original_url = snap.get("original", "")
-            wayback_url = f"https://web.archive.org/web/{timestamp}/{original_url}"
-
-            # Timestamp'i ISO 8601 formatına çevir
-            iso_timestamp = ""
-            if len(timestamp) >= 14:
-                try:
-                    dt = datetime.strptime(timestamp[:14], "%Y%m%d%H%M%S")
-                    iso_timestamp = dt.isoformat()
-                except ValueError:
-                    iso_timestamp = timestamp
-
-            unique_snapshots.append(
+            digest = hashlib.sha1(img.tobytes()).hexdigest()
+            if digest in seen:
+                continue
+            seen.add(digest)
+            snapshots.append(
                 {
-                    "timestamp": iso_timestamp,
-                    "wayback_url": wayback_url,
-                    "original_url": original_url,
+                    "timestamp": release["date"].isoformat(),  # type: ignore[union-attr]
+                    "wayback_url": url,
+                    "release": release["release"],
                     "digest": digest,
                     "tile_coords": {"x": x, "y": y, "z": z},
-                    "provider": provider.value,
+                    "provider": "esri_wayback",
                 }
             )
-
-            if len(unique_snapshots) >= self.MAX_SNAPSHOTS:
+            if len(snapshots) >= self.MAX_SNAPSHOTS:
                 break
 
         logger.info(
-            "Tarihsel sorgu tamamlandı: %d snapshot bulundu "
-            "(lat=%.4f, lng=%.4f, z=%d, provider=%s)",
-            len(unique_snapshots),
-            lat,
-            lng,
-            zoom,
-            provider.value,
+            "Esri Wayback: %d sürümden %d farklı görüntü (lat=%.4f, lng=%.4f, z=%d)",
+            len(candidates), len(snapshots), lat, lng, zoom,
         )
+        return snapshots
 
-        return unique_snapshots
-
-    async def fetch_snapshot_image(
-        self,
-        wayback_url: str,
-    ) -> Optional[Image.Image]:
-        """
-        Wayback Machine'den belirli bir snapshot görüntüsünü indirir.
-
-        Args:
-            wayback_url: Wayback Machine erişim URL'si.
-
-        Returns:
-            PIL.Image.Image veya indirilemezse None.
-        """
-        if self._client is None:
-            raise RuntimeError(
-                "WaybackFetcher context manager ile kullanılmalı."
-            )
-
+    async def fetch_snapshot_image(self, wayback_url: str) -> Optional[Image.Image]:
+        """Bir sürümün tile görüntüsünü indirir (aynı örnek içinde önbellekli)."""
+        if wayback_url in self._images:
+            return self._images[wayback_url]
         try:
-            response = await self._client.get(
-                wayback_url,
-                headers={"User-Agent": random.choice(USER_AGENTS)},
-            )
+            response = await self._require_client().get(wayback_url)
             response.raise_for_status()
-
             img = Image.open(io.BytesIO(response.content))
             img.load()
-            return img
-
         except Exception as exc:
-            logger.warning(
-                "Wayback snapshot indirilemedi (%s): %s",
-                wayback_url,
-                str(exc),
-            )
+            logger.warning("Wayback görüntüsü indirilemedi (%s): %s", wayback_url, exc)
             return None
+        self._images[wayback_url] = img
+        return img

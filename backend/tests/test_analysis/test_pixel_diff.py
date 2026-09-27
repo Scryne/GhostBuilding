@@ -137,7 +137,6 @@ class TestImageAligner:
 
     def test_center_crop_match(self):
         """Merkez kırpma doğru boyutta sonuç vermeli."""
-        import cv2
         arr1 = np.zeros((200, 200, 3), dtype=np.uint8)
         arr2 = np.zeros((300, 250, 3), dtype=np.uint8)
 

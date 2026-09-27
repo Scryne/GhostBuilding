@@ -23,12 +23,9 @@ os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 
 import logging
 import time
-import uuid
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Import helpers — db session'ı SQLite uyumlu hale getiren mock

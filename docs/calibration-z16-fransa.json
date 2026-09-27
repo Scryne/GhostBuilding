@@ -1,0 +1,238 @@
+{
+ "zoom": 16,
+ "n": 20,
+ "diff_score": {
+  "median": 76.62,
+  "p90": 88.79,
+  "p99": 98.95,
+  "max": 99.68
+ },
+ "censorship": {
+  "median": 0.0,
+  "p90": 1.5,
+  "p99": 19.05,
+  "max": 20.0
+ },
+ "rows": [
+  {
+   "konum": "Paris 11e",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 86.95,
+   "ssim": 0.16,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Lyon Part-Dieu",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 71.55,
+   "ssim": 0.121,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Marseille",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 82.28,
+   "ssim": 0.43,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Toulouse",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 52.62,
+   "ssim": 0.323,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Nantes",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 88.0,
+   "ssim": 0.11,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Lille",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 62.63,
+   "ssim": 0.353,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Strasbourg",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 76.68,
+   "ssim": 0.394,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Bordeaux",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 85.32,
+   "ssim": 0.121,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Rennes",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 83.1,
+   "ssim": 0.887,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Dijon",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 95.85,
+   "ssim": 0.849,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Clermont-Ferrand",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 77.06,
+   "ssim": 0.169,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Rouen",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 67.8,
+   "ssim": 0.504,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Beauce tarım",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 66.74,
+   "ssim": 0.623,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Champagne bağları",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 47.13,
+   "ssim": 0.441,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Landes ormanı",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 1.94,
+   "ssim": 0.384,
+   "censorship": 20.0
+  },
+  {
+   "konum": "Bretagne kıyısı",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 76.56,
+   "ssim": 0.207,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Alpes vadisi",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 73.0,
+   "ssim": 0.146,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Provence",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 81.8,
+   "ssim": 0.199,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Massif Central",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 99.68,
+   "ssim": 0.583,
+   "censorship": 15.0
+  },
+  {
+   "konum": "Normandiya bocage",
+   "kaynaklar": [
+    "esri",
+    "ign",
+    "maptiler"
+   ],
+   "diff_score": 72.66,
+   "ssim": 0.227,
+   "censorship": 0.0
+  }
+ ]
+}

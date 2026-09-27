@@ -1,0 +1,258 @@
+{
+ "zoom": 16,
+ "n": 40,
+ "diff_score": {
+  "median": 71.53,
+  "p90": 80.09,
+  "p99": 87.56,
+  "max": 90.49
+ },
+ "censorship": {
+  "median": 0.0,
+  "p90": 15.5,
+  "p99": 20.0,
+  "max": 20.0
+ },
+ "rows": [
+  {
+   "konum": "Istanbul Kadikoy",
+   "diff_score": 71.43,
+   "ssim": 0.203,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Ankara Kizilay",
+   "diff_score": 74.03,
+   "ssim": 0.09,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Izmir Alsancak",
+   "diff_score": 76.49,
+   "ssim": 0.355,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Konya merkez",
+   "diff_score": 68.78,
+   "ssim": 0.299,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Eskisehir",
+   "diff_score": 73.58,
+   "ssim": 0.169,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Trabzon",
+   "diff_score": 49.55,
+   "ssim": 0.199,
+   "censorship": 20.0
+  },
+  {
+   "konum": "Berlin Mitte",
+   "diff_score": 78.22,
+   "ssim": 0.055,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Madrid Centro",
+   "diff_score": 74.35,
+   "ssim": 0.316,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Rome Trastevere",
+   "diff_score": 65.49,
+   "ssim": 0.355,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Warsaw",
+   "diff_score": 24.87,
+   "ssim": 0.849,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Lyon",
+   "diff_score": 82.99,
+   "ssim": 0.125,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Porto",
+   "diff_score": 90.49,
+   "ssim": 0.021,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Chicago Loop",
+   "diff_score": 78.84,
+   "ssim": 0.072,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Denver",
+   "diff_score": 45.51,
+   "ssim": 0.299,
+   "censorship": 20.0
+  },
+  {
+   "konum": "Toronto",
+   "diff_score": 72.28,
+   "ssim": 0.092,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Mexico City",
+   "diff_score": 71.64,
+   "ssim": 0.113,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Bogota",
+   "diff_score": 42.27,
+   "ssim": 0.397,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Sao Paulo",
+   "diff_score": 71.69,
+   "ssim": 0.23,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Buenos Aires",
+   "diff_score": 76.77,
+   "ssim": 0.083,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Lima",
+   "diff_score": 44.46,
+   "ssim": 0.492,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Nairobi",
+   "diff_score": 41.63,
+   "ssim": 0.292,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Lagos",
+   "diff_score": 32.6,
+   "ssim": 0.17,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Cairo Zamalek",
+   "diff_score": 71.36,
+   "ssim": 0.194,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Casablanca",
+   "diff_score": 72.58,
+   "ssim": 0.24,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Johannesburg",
+   "diff_score": 78.04,
+   "ssim": 0.048,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Mumbai Bandra",
+   "diff_score": 67.32,
+   "ssim": 0.245,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Bangkok",
+   "diff_score": 73.05,
+   "ssim": 0.164,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Jakarta",
+   "diff_score": 51.49,
+   "ssim": 0.244,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Seoul",
+   "diff_score": 76.42,
+   "ssim": 0.066,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Osaka",
+   "diff_score": 68.95,
+   "ssim": 0.205,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Melbourne",
+   "diff_score": 81.31,
+   "ssim": 0.018,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Auckland",
+   "diff_score": 79.96,
+   "ssim": 0.18,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Iowa farmland",
+   "diff_score": 20.65,
+   "ssim": 0.401,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Anatolia farmland",
+   "diff_score": 73.2,
+   "ssim": 0.447,
+   "censorship": 15.0
+  },
+  {
+   "konum": "Ukraine farmland",
+   "diff_score": 0.0,
+   "ssim": 0.872,
+   "censorship": 20.0
+  },
+  {
+   "konum": "Sahara edge",
+   "diff_score": 81.88,
+   "ssim": 0.014,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Norway coast",
+   "diff_score": 56.88,
+   "ssim": 0.451,
+   "censorship": 20.0
+  },
+  {
+   "konum": "Amazon edge",
+   "diff_score": 40.1,
+   "ssim": 0.551,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Alps valley",
+   "diff_score": 53.19,
+   "ssim": 0.885,
+   "censorship": 0.0
+  },
+  {
+   "konum": "Scottish highlands",
+   "diff_score": 25.67,
+   "ssim": 0.171,
+   "censorship": 0.0
+  }
+ ]
+}
