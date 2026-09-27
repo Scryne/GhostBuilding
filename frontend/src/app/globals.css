@@ -99,8 +99,8 @@
   /* Glass Panel — Sidebar ve Overlay için */
   .glass-panel {
     background: rgba(30, 32, 40, 0.92);
-    backdrop-filter: blur(24px) saturate(1.6);
-    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 1rem;
     box-shadow:
@@ -110,8 +110,8 @@
 
   .glass-panel-strong {
     background: rgba(30, 32, 40, 0.96);
-    backdrop-filter: blur(32px) saturate(1.8);
-    -webkit-backdrop-filter: blur(32px) saturate(1.8);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 1rem;
     box-shadow:
@@ -214,11 +214,23 @@
     width: 340px;
   }
 
+  /* Bulgu paneli: üst çubuğun altında başlar; mobilde tam genişlik */
   .map-overlay-right {
     right: 1rem;
-    top: 1rem;
+    top: 6rem;
     bottom: 1rem;
-    width: 380px;
+    width: 400px;
+  }
+
+  @media (max-width: 767px) {
+    .map-overlay-right {
+      left: 0.5rem;
+      right: 0.5rem;
+      top: 5rem;
+      bottom: 0.5rem;
+      width: auto;
+      z-index: 35;
+    }
   }
 
   .map-overlay-top {

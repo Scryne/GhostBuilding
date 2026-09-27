@@ -1,5 +1,5 @@
 /**
- * sentry.client.config.ts — Frontend Sentry SDK (Client-Side)
+ * instrumentation-client.ts — Frontend Sentry SDK (Client-Side)
  *
  * Next.js client tarafı Sentry konfigürasyonu.
  * Browser'da çalışan JavaScript hatalarını ve performans verilerini yakalar.
@@ -69,3 +69,6 @@ if (SENTRY_DSN) {
     ],
   });
 }
+
+// Next.js 15+ istemci gezinme izleri (eski sentry.client.config.ts'in yerine bu dosya yüklenir)
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

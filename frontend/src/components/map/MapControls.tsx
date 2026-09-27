@@ -89,7 +89,8 @@ export default function MapControls() {
         lat: viewport.latitude,
         lng: viewport.longitude,
         zoom: Math.round(viewport.zoom),
-        radius_km: Math.min(50, Math.max(1, 40_000 / Math.pow(2, viewport.zoom))),
+        // Analiz merkezdeki tek karoda (z16) yapılır; yarıçap yalnız tarama kaydı içindir.
+        radius_km: 1,
       });
 
       setActiveScanTaskId(result.task_id);
@@ -97,10 +98,21 @@ export default function MapControls() {
       toast.info("Tarama başlatıldı", {
         description: `Tahmini süre: ~${result.estimated_seconds} saniye`,
       });
-    } catch {
-      toast.error("Tarama başlatılamadı", {
-        description: "API bağlantı hatası. Tekrar deneyin.",
-      });
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        toast.warning("Tarama için giriş yapın", {
+          description: "Tarama dış görüntü kaynaklarına istek attığı için yalnız üyelere açık.",
+        });
+      } else if (status === 429) {
+        toast.warning("Tarama sınırına ulaşıldı", {
+          description: "Saatte en fazla 5 tarama başlatılabilir. Biraz sonra yeniden deneyin.",
+        });
+      } else {
+        toast.error("Tarama başlatılamadı", {
+          description: "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.",
+        });
+      }
     } finally {
       setIsScanning(false);
     }

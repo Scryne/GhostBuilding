@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// GhostBuilding — Next.js Middleware
-// Korumalı route'lar için JWT token doğrulama ve yönlendirme.
+// GhostBuilding — Next.js Proxy (Next 16'da middleware'in yeni adı)
+// Korumalı route'lar için JWT token doğrulama ve yönlendirme. Token, istemcinin
+// setTokens() ile yazdığı çerezden okunur (lib/api.ts).
 // /profile, /verify gibi sayfalar giriş gerektirir.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -54,16 +55,14 @@ function isTokenValid(token: string): boolean {
   return payload.exp > now - 30;
 }
 
-// ── Middleware ─────────────────────────────────────────────────────────────
+// ── Proxy ─────────────────────────────────────────────────────────────
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ── Token kontrolü ──────────────────────────────────────────
-  // Next.js middleware'de localStorage'a erişilemez.
-  // Token'ı cookie header'dan veya Authorization header'dan al.
-  // Client-side auth hook zaten localStorage kullanıyor;
-  // middleware ek güvenlik katmanı olarak cookie veya header kontrol eder.
+  // Proxy localStorage'ı göremez; istemci token'ı ayrıca çereze yazar (lib/api.ts).
+  // Eskiden çerez hiç yazılmıyordu: giriş yapmış kullanıcı da profile giremiyordu.
 
   const token =
     request.cookies.get(TOKEN_KEY)?.value ||
@@ -92,29 +91,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // ── Response headers — güvenlik ─────────────────────────────
+  // Güvenlik başlıkları (CSP dahil) tek yerde: next.config.mjs → headers().
   const response = NextResponse.next();
-
-  // Temel güvenlik header'ları
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-
-  // Content Security Policy (CSP)
-  const cspHeader = `
-    default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline';
-    style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: https://*.cartocdn.com https://*.openstreetmap.org https://nominatim.openstreetmap.org https://api.mapbox.com https://services.sentinel-hub.com;
-    font-src 'self';
-    object-src 'none';
-    base-uri 'self';
-    form-action 'self';
-    frame-ancestors 'none';
-    connect-src 'self' https://*.cartocdn.com https://nominatim.openstreetmap.org https://api.mapbox.com https://services.sentinel-hub.com http://localhost:8000;
-  `.replace(/\s{2,}/g, " ").trim();
-
-  response.headers.set("Content-Security-Policy", cspHeader);
 
   return response;
 }

@@ -1,151 +1,53 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// StatsBar.tsx — Üst istatistik çubuğu
-// Toplam anomali, haftalık artış, doğrulanmış, aktif araştırmacı.
+// StatsBar.tsx — Keşfet üst istatistikleri
+// Yalnız API'nin döndürdüğü sayılar. Veri gelmezse "—" (eskiden 12.483 anomali,
+// "↑ %12" ve 892 araştırmacı gibi sabit sayılar gösteriliyordu).
 // ═══════════════════════════════════════════════════════════════════════════
 
 "use client";
 
-import { useMemo } from "react";
-import { cn, formatNumber } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useAnomalyStats } from "@/hooks/useAnomaly";
-import {
-  MapPin,
-  TrendingUp,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
-
-// ── Stat Kartı ────────────────────────────────────────────────────────────
-
-interface StatItemProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  trend?: string;
-  trendUp?: boolean;
-  color: string;
-  glowColor: string;
-}
-
-function StatItem({
-  icon,
-  label,
-  value,
-  trend,
-  trendUp,
-  color,
-  glowColor,
-}: StatItemProps) {
-  return (
-    <div className="flex items-center gap-3 group">
-      <div
-        className={cn(
-          "w-9 h-9 rounded-xl flex items-center justify-center",
-          "transition-all duration-300 group-hover:scale-110"
-        )}
-        style={{
-          backgroundColor: `${color}15`,
-          border: `1px solid ${color}25`,
-          boxShadow: `0 0 0 0 ${glowColor}`,
-        }}
-      >
-        {icon}
-      </div>
-      <div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-base font-bold text-white tabular-nums tracking-tight">
-            {value}
-          </span>
-          {trend && (
-            <span
-              className={cn(
-                "text-[10px] font-bold",
-                trendUp ? "text-emerald-400" : "text-red-400"
-              )}
-            >
-              {trend}
-            </span>
-          )}
-        </div>
-        <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
-          {label}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
+import { AnomalyStatus } from "@/lib/types";
 
 interface StatsBarProps {
   className?: string;
 }
 
 export default function StatsBar({ className }: StatsBarProps) {
-  const { data: stats } = useAnomalyStats();
+  const { data: stats, error } = useAnomalyStats();
+  const byStatus = new Map((stats?.by_status ?? []).map((s) => [s.status, s.count]));
+  const pending =
+    (byStatus.get(AnomalyStatus.PENDING) ?? 0) + (byStatus.get(AnomalyStatus.UNDER_REVIEW) ?? 0);
 
-  const statItems = useMemo<StatItemProps[]>(() => {
-    const total = stats?.total_count ?? 12_483;
-    const last30 = stats?.last_30_days_count ?? 127;
-
-    return [
-      {
-        icon: <MapPin className="w-4 h-4" style={{ color: "#2E6DA4" }} />,
-        label: "Toplam Anomali",
-        value: formatNumber(total),
-        color: "#2E6DA4",
-        glowColor: "rgba(46, 109, 164, 0.3)",
-      },
-      {
-        icon: <TrendingUp className="w-4 h-4" style={{ color: "#10B981" }} />,
-        label: "Bu Ay",
-        value: `+${formatNumber(last30)}`,
-        trend: "↑ 12%",
-        trendUp: true,
-        color: "#10B981",
-        glowColor: "rgba(16, 185, 129, 0.3)",
-      },
-      {
-        icon: <ShieldCheck className="w-4 h-4" style={{ color: "#F4A261" }} />,
-        label: "Doğrulanmış",
-        value: formatNumber(
-          stats?.by_category?.reduce((acc, c) => acc + c.count, 0) ?? 3_421
-        ),
-        color: "#F4A261",
-        glowColor: "rgba(244, 162, 97, 0.3)",
-      },
-      {
-        icon: <Users className="w-4 h-4" style={{ color: "#8B5CF6" }} />,
-        label: "Araştırmacı",
-        value: formatNumber(892),
-        color: "#8B5CF6",
-        glowColor: "rgba(139, 92, 246, 0.3)",
-      },
-    ];
-  }, [stats]);
+  const items = [
+    { label: "Bulgu", value: stats?.total_count },
+    { label: "Son 30 gün", value: stats?.last_30_days_count },
+    { label: "İnceleme bekliyor", value: stats ? pending : undefined },
+    { label: "Toplulukça doğrulandı", value: stats ? (byStatus.get(AnomalyStatus.VERIFIED) ?? 0) : undefined },
+  ];
 
   return (
-    <div
-      className={cn(
-        "glass-panel px-6 py-4",
-        "flex items-center justify-between gap-4",
-        "overflow-x-auto",
-        className
-      )}
+    <section
+      className={cn("rounded-2xl border border-border bg-surface/70 px-5 py-4", className)}
+      aria-label="Bulgu istatistikleri"
       id="stats-bar"
     >
-      {/* Stats */}
-      <div className="flex items-center gap-8">
-        {statItems.map((item) => (
-          <StatItem key={item.label} {...item} />
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {items.map((item) => (
+          <div key={item.label}>
+            <dt className="text-[11px] font-medium uppercase tracking-wider text-muted">{item.label}</dt>
+            <dd className="mt-0.5 font-mono text-xl font-bold tabular-nums text-foreground">
+              {item.value?.toLocaleString("tr-TR") ?? "—"}
+            </dd>
+          </div>
         ))}
-      </div>
-
-      {/* Canlı gösterge */}
-      <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-400 bg-emerald-400/8 px-3 py-1.5 rounded-lg border border-emerald-400/15 whitespace-nowrap flex-shrink-0">
-        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        Canlı Veri
-      </div>
-    </div>
+      </dl>
+      {error && (
+        <p className="mt-2 text-xs text-red-400" role="alert">
+          İstatistikler alınamadı; sayılar bağlantı gelince görünecek.
+        </p>
+      )}
+    </section>
   );
 }

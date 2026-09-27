@@ -5,6 +5,8 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    // lib/utils.ts kategori/durum sınıflarını taşır; taranmazsa derlemede atılır.
+    "./src/lib/**/*.{ts,tsx}",
   ],
   darkMode: "class",
   theme: {
@@ -63,34 +65,16 @@ const config: Config = {
           800: "#B06421",
           900: "#8A4E19",
         },
-        hidden: {
-          DEFAULT: "#E63946",
+        // Kategori renkleri (DESIGN.md): koyu zeminde AA kontrastlı, birbirinden ayırt edilir.
+        // "hidden" adı Tailwind'in display:none sınıfıyla karışıyordu.
+        concealed: {
+          DEFAULT: "#B79CFF",
         },
         censored: {
-          DEFAULT: "#9B2226",
-          50: "#F8E5E6",
-          100: "#EDBFC1",
-          200: "#DB9396",
-          300: "#C9676C",
-          400: "#B74349",
-          500: "#9B2226",
-          600: "#871D21",
-          700: "#70181C",
-          800: "#591316",
-          900: "#420E11",
+          DEFAULT: "#F4C95D",
         },
         discrepancy: {
-          DEFAULT: "#457B9D",
-          50: "#EBF2F5",
-          100: "#CDDFE7",
-          200: "#A8C7D6",
-          300: "#83AFC5",
-          400: "#6499B1",
-          500: "#457B9D",
-          600: "#3B6A87",
-          700: "#315871",
-          800: "#27465B",
-          900: "#1D3445",
+          DEFAULT: "#6CB4EE",
         },
 
         // ── Surface / Background — Dashboard-inspired warm darks ─────
@@ -117,7 +101,7 @@ const config: Config = {
         // ── Semantic ──────────────────────────────────────────────────
         foreground: "#F0F2F5",
         muted: "#8B8FA3",
-        "muted-foreground": "#6B6F82",
+        "muted-foreground": "#80859A",
 
         // ── Status Colors ─────────────────────────────────────────────
         success: {

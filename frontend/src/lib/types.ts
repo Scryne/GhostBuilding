@@ -19,13 +19,13 @@ export enum AnomalyStatus {
   UNDER_REVIEW = "UNDER_REVIEW",
 }
 
+/** Görüntü kaynakları. API küçük harfle döner ("esri"); karşılaştırma büyük/küçük harf duyarsız. */
 export enum ImageProvider {
-  OSM = "OSM",
-  GOOGLE = "GOOGLE",
-  BING = "BING",
-  YANDEX = "YANDEX",
-  SENTINEL = "SENTINEL",
-  WAYBACK = "WAYBACK",
+  ESRI = "esri",
+  MAPTILER = "maptiler",
+  IGN = "ign",
+  OSM = "osm",
+  WAYBACK = "esri_wayback",
 }
 
 export enum VerificationVote {
@@ -73,11 +73,39 @@ export interface AnomalyListItem {
   status: AnomalyStatus;
   detected_at: string | null;
   thumbnail_url: string | null;
+  location_label: string | null;
+}
+
+/** Motorun her sinyal için verdiği taban-göreli puan (50 = sıradan konumların p99'u). */
+export interface ScoreBreakdown {
+  pixel_diff_score: number;
+  blur_censorship_score: number;
+  geospatial_mismatch_score: number;
+  historical_change_score: number;
+  provider_disagreement_score: number;
+  weighted_total: number;
+  raw_max_diff?: number;
+  raw_censorship?: number;
+  raw_max_diff_p90?: number | null;
+  raw_censorship_p90?: number | null;
+  inactive_signals?: string[];
+}
+
+export interface AnomalyMeta {
+  score_breakdown?: ScoreBreakdown;
+  reasons?: string[];
+  most_blurred_provider?: string;
+  sharpest_provider?: string;
+  max_diff_pair?: [string, string] | null;
+  reference_site?: string;
+  reference_kind?: "tesis" | "kontrol";
+  reference_scan?: boolean;
+  [key: string]: unknown;
 }
 
 export interface AnomalyImage {
   id: string;
-  provider: ImageProvider;
+  provider: string;
   image_url: string;
   captured_at: string | null;
   zoom_level: number | null;
@@ -116,7 +144,8 @@ export interface AnomalyDetail {
   verified_at: string | null;
   source_providers: string[] | null;
   detection_methods: string[] | null;
-  meta_data: Record<string, unknown> | null;
+  meta_data: AnomalyMeta | null;
+  location_label: string | null;
   created_at: string | null;
   updated_at: string | null;
   images: AnomalyImage[];
@@ -172,6 +201,11 @@ export interface CategoryCount {
   count: number;
 }
 
+export interface StatusCount {
+  status: AnomalyStatus;
+  count: number;
+}
+
 export interface TopAnomaly {
   id: string;
   lat: number;
@@ -190,6 +224,7 @@ export interface RegionDistribution {
 export interface StatsResponse {
   total_count: number;
   by_category: CategoryCount[];
+  by_status: StatusCount[];
   last_30_days_count: number;
   top_10: TopAnomaly[];
   region_distribution: RegionDistribution[];
@@ -246,6 +281,20 @@ export interface UserProfile {
   is_active: boolean;
   is_verified: boolean;
   created_at: string | null;
+}
+
+/** GET /auth/me/verifications öğesi */
+export interface MyVerification {
+  anomaly_id: string;
+  vote: VerificationVote;
+  comment: string | null;
+  created_at: string | null;
+  category: AnomalyCategory;
+  anomaly_status: AnomalyStatus;
+  confidence_score: number;
+  lat: number;
+  lng: number;
+  location_label: string | null;
 }
 
 export interface ProfileUpdateRequest {

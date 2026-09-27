@@ -138,12 +138,12 @@ export const CATEGORY_COLORS: Record<
     hex: "#F4A261",
   },
   [AnomalyCategory.HIDDEN_STRUCTURE]: {
-    bg: "bg-accent/10",
-    text: "text-accent",
-    border: "border-accent/30",
-    dot: "bg-accent",
-    glow: "shadow-glow-accent",
-    hex: "#E63946",
+    bg: "bg-concealed/10",
+    text: "text-concealed",
+    border: "border-concealed/30",
+    dot: "bg-concealed",
+    glow: "",
+    hex: "#B79CFF",
   },
   [AnomalyCategory.CENSORED_AREA]: {
     bg: "bg-censored/10",
@@ -151,7 +151,7 @@ export const CATEGORY_COLORS: Record<
     border: "border-censored/30",
     dot: "bg-censored",
     glow: "",
-    hex: "#9B2226",
+    hex: "#F4C95D",
   },
   [AnomalyCategory.IMAGE_DISCREPANCY]: {
     bg: "bg-discrepancy/10",
@@ -159,7 +159,7 @@ export const CATEGORY_COLORS: Record<
     border: "border-discrepancy/30",
     dot: "bg-discrepancy",
     glow: "",
-    hex: "#457B9D",
+    hex: "#6CB4EE",
   },
 };
 
@@ -237,23 +237,75 @@ export const VOTE_COLORS: Record<
 // ── Yardımcı Fonksiyonlar ─────────────────────────────────────────────────
 
 /**
- * Güven skorunu renk sınıfına çevirir.
+ * Anomali puanı ölçeği: her sinyal sıradan konumların dağılımına göre 0–100'e çekilir,
+ * 50 = sıradan konumların %99'u (p99). Puan olasılık değildir; "iyi/kötü" rengi taşımaz.
  */
-export function getConfidenceColor(score: number): string {
-  if (score >= 80) return "text-emerald-400";
-  if (score >= 60) return "text-yellow-400";
-  if (score >= 40) return "text-orange-400";
-  return "text-red-400";
+export const BASELINE_P99_SCORE = 50;
+
+/** Puanın tabana göre okunuşu (arayüz metni). */
+export function describeScore(score: number): string {
+  if (score <= BASELINE_P99_SCORE) return "Sıradan konumlar aralığında";
+  if (score < 75) return "Sıradan konumların %99'undan sıra dışı";
+  return "Tabanın belirgin biçimde üstünde";
 }
 
-/**
- * Güven skorunu progress bar renk sınıfına çevirir.
- */
+/** Puanı tek ondalıkla, Türkçe biçimde yazar (53,1). */
+export function formatScore(score: number): string {
+  return score.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+/** @deprecated Puan renkleri kategori rengini kullanır; geriye dönük uyum için nötr döner. */
+export function getConfidenceColor(score: number): string {
+  return score > BASELINE_P99_SCORE ? "text-foreground" : "text-muted";
+}
+
+/** @deprecated Bkz. getConfidenceColor. */
 export function getConfidenceBarColor(score: number): string {
-  if (score >= 80) return "bg-emerald-500";
-  if (score >= 60) return "bg-yellow-500";
-  if (score >= 40) return "bg-orange-500";
-  return "bg-red-500";
+  return score > BASELINE_P99_SCORE ? "bg-secondary" : "bg-white/20";
+}
+
+// ── Görüntü Kaynakları ───────────────────────────────────────────────────
+
+export interface ProviderMeta {
+  label: string;
+  hex: string;
+  attribution: string;
+  note?: string;
+}
+
+/** Kaynak etiketleri ve ZORUNLU atıflar (kullanım koşulları gereği arayüzde gösterilir). */
+export const PROVIDERS: Record<string, ProviderMeta> = {
+  esri: {
+    label: "Esri World Imagery",
+    hex: "#7FB3D5",
+    attribution: "Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+  },
+  maptiler: {
+    label: "MapTiler Satellite",
+    hex: "#8FD694",
+    attribution: "© MapTiler",
+  },
+  ign: {
+    label: "IGN Ortofoto",
+    hex: "#F4C95D",
+    attribution: "© IGN – Géoplateforme (Licence Ouverte Etalab 2.0)",
+    note: "Yalnız Fransa",
+  },
+  osm: {
+    label: "OpenStreetMap",
+    hex: "#C9CDD8",
+    attribution: "© OpenStreetMap contributors",
+  },
+  esri_wayback: {
+    label: "Esri Wayback",
+    hex: "#B79CFF",
+    attribution: "Esri World Imagery Wayback",
+  },
+};
+
+export function providerMeta(key: string | null | undefined): ProviderMeta {
+  const k = (key ?? "").toLowerCase();
+  return PROVIDERS[k] ?? { label: key ?? "Bilinmeyen kaynak", hex: "#8B8FA3", attribution: "" };
 }
 
 /**

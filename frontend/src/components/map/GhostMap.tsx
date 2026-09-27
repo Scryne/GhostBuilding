@@ -15,17 +15,17 @@ import {
   type ReactNode,
 } from "react";
 import Map, {
-  NavigationControl,
+  AttributionControl,
+  Layer,
+  Source,
   type MapRef,
   type ViewStateChangeEvent,
 } from "react-map-gl/maplibre";
-import maplibregl from "maplibre-gl";
+import { setWorkerUrl, type MapMouseEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import AnomalyLayer from "./AnomalyLayer";
-import LayerControls from "./LayerControls";
 import MapControls from "./MapControls";
-import { anomalyApi } from "@/lib/api";
 import ScanProgressToast from "./ScanProgressToast";
 import { AnomalyDetailPanel } from "@/components/anomaly";
 import type { AnomalyCategory, MapViewport } from "@/lib/types";
@@ -40,10 +40,70 @@ const MAP_STYLES = {
 
 // ── Başlangıç Viewport ───────────────────────────────────────────────────
 
+// MapLibre 6 worker'ı: paketleyici import.meta.url'li worker dosyalarını yayımlamadığı için
+// public/maplibre/ altına kopyalanır (scripts/copy-maplibre-worker.mjs).
+setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+
+// ── Altlıklar ─────────────────────────────────────────────────────────────
+// Vektör karanlık harita + karşılaştırmada kullanılan uydu kaynaklarının kendileri.
+// Kullanıcı bir bulguyu, motorun baktığı görüntünün aynısıyla haritada görebilir.
+
+export type BasemapId = "dark" | "esri" | "maptiler" | "ign";
+
+const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPLIBRE_TOKEN;
+
+export const BASEMAPS: Record<
+  BasemapId,
+  { label: string; hint?: string; tiles?: string[]; attribution?: string; maxzoom?: number }
+> = {
+  dark: { label: "Harita" },
+  esri: {
+    label: "Esri uydu",
+    tiles: [
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    ],
+    attribution: "Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    maxzoom: 19,
+  },
+  maptiler: {
+    label: "MapTiler uydu",
+    tiles: MAPTILER_KEY
+      ? [`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MAPTILER_KEY}`]
+      : undefined,
+    attribution: "© MapTiler © OpenStreetMap contributors",
+    maxzoom: 20,
+  },
+  ign: {
+    label: "IGN ortofoto",
+    hint: "Yalnız Fransa",
+    tiles: [
+      "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/jpeg",
+    ],
+    attribution: "© IGN – Géoplateforme",
+    maxzoom: 19,
+  },
+};
+
+/** Paylaşılan bağlantı: /?a=<anomali>&lat=..&lng=..&z=.. haritayı o bulguda açar. */
+function readUrlState(): { viewport: MapViewport; anomalyId: string | null } {
+  const params = new URLSearchParams(window.location.search);
+  const lat = Number(params.get("lat"));
+  const lng = Number(params.get("lng"));
+  const zoom = Number(params.get("z"));
+  const valid = params.has("lat") && params.has("lng") && Number.isFinite(lat) && Number.isFinite(lng);
+  return {
+    viewport: valid
+      ? { latitude: lat, longitude: lng, zoom: Number.isFinite(zoom) && zoom > 0 ? zoom : 15 }
+      : INITIAL_VIEWPORT,
+    anomalyId: params.get("a"),
+  };
+}
+
+// Referans taramasının bulguları Batı Avrupa'da; ilk açılış onları gösterir.
 const INITIAL_VIEWPORT: MapViewport = {
-  latitude: 39.0,
-  longitude: 35.0,
-  zoom: 5,
+  latitude: 48.8,
+  longitude: 2.5,
+  zoom: 4.6,
 };
 
 // ── Map Context — Alt bileşenlerin map instance'a erişimi ─────────────────
@@ -66,6 +126,8 @@ interface MapContextValue {
   // Seçili anomali
   selectedAnomalyId: string | null;
   setSelectedAnomalyId: (id: string | null) => void;
+  basemap: BasemapId;
+  setBasemap: (id: BasemapId) => void;
 }
 
 const MapContext = createContext<MapContextValue | null>(null);
@@ -89,7 +151,9 @@ export default function GhostMap({ children }: GhostMapProps) {
 
   // ── Viewport State ──────────────────────────────────────────────────
 
-  const [viewport, setViewport] = useState<MapViewport>(INITIAL_VIEWPORT);
+  // Bileşen yalnız istemcide yüklenir (Map.tsx, ssr: false); URL okunabilir.
+  const [urlState] = useState(readUrlState);
+  const [viewport, setViewport] = useState<MapViewport>(urlState.viewport);
 
   const handleMove = useCallback((evt: ViewStateChangeEvent) => {
     setViewport({
@@ -107,7 +171,7 @@ export default function GhostMap({ children }: GhostMapProps) {
   } | null>(null);
 
   const handleMouseMove = useCallback(
-    (evt: maplibregl.MapMouseEvent & { target: maplibregl.Map }) => {
+    (evt: MapMouseEvent) => {
       setCursorPosition({
         lat: evt.lngLat.lat,
         lng: evt.lngLat.lng,
@@ -152,11 +216,13 @@ export default function GhostMap({ children }: GhostMapProps) {
     });
   }, []);
 
-  const [minConfidence, setMinConfidence] = useState(40);
+  // Kayıtlı her anomali zaten tabanın üstünde (>50); varsayılan filtre hiçbirini gizlemez.
+  const [minConfidence, setMinConfidence] = useState(0);
+  const [basemap, setBasemap] = useState<BasemapId>("dark");
   const [showNearby, setShowNearby] = useState(false);
   const [activeScanTaskId, setActiveScanTaskId] = useState<string | null>(null);
   const [selectedAnomalyId, setSelectedAnomalyId] = useState<string | null>(
-    null
+    urlState.anomalyId
   );
 
   // ── Map Event Handlers ──────────────────────────────────────────────
@@ -180,33 +246,12 @@ export default function GhostMap({ children }: GhostMapProps) {
       flyTo(e.detail.lat, e.detail.lng, e.detail.zoom);
     };
 
-    const handleScan = async () => {
-      // Harita merkezini al
-      const map = mapRef.current?.getMap();
-      if (!map) return;
-      const center = map.getCenter();
-      
-      try {
-        const resp = await anomalyApi.startScan({
-          lat: center.lat,
-          lng: center.lng,
-          zoom: map.getZoom(),
-          radius_km: 2, // varsayılan
-        });
-        setActiveScanTaskId(resp.task_id);
-      } catch (err) {
-        console.error("Tarama başlatılamadı:", err);
-      }
-    };
-
     window.addEventListener("ghostbuilding:flyto", handleFlyTo as EventListener);
-    window.addEventListener("ghostbuilding:scan", handleScan as EventListener);
-
     return () => {
       window.removeEventListener("ghostbuilding:flyto", handleFlyTo as EventListener);
-      window.removeEventListener("ghostbuilding:scan", handleScan as EventListener);
     };
-  }, [flyTo, setActiveScanTaskId]);
+  }, [flyTo]);
+
 
   const contextValue: MapContextValue = {
     mapRef,
@@ -223,16 +268,18 @@ export default function GhostMap({ children }: GhostMapProps) {
     setActiveScanTaskId,
     selectedAnomalyId,
     setSelectedAnomalyId,
+    basemap,
+    setBasemap,
   };
+
+  const raster = BASEMAPS[basemap];
 
   return (
     <MapContext.Provider value={contextValue}>
       <div className="w-full h-full relative">
         <Map
           ref={mapRef}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          mapLib={maplibregl as any}
-          initialViewState={INITIAL_VIEWPORT}
+          initialViewState={urlState.viewport}
           onMove={handleMove}
           onLoad={handleMapLoad}
           mapStyle={MAP_STYLES.dark}
@@ -242,16 +289,29 @@ export default function GhostMap({ children }: GhostMapProps) {
           maxTileCacheSize={500}
           style={{ width: "100%", height: "100%" }}
         >
-          {/* Zoom Kontrolleri — sağ üst */}
-          <NavigationControl position="top-right" showCompass={false} />
+          {/* Kaynak atıfları kullanım koşulu gereği her altlıkta görünür */}
+          <AttributionControl compact position="bottom-right" />
+
+          {/* Uydu altlığı — anomali katmanlarının altında */}
+          {raster.tiles && (
+            <Source
+              key={basemap}
+              id={`basemap-${basemap}`}
+              type="raster"
+              tiles={raster.tiles}
+              tileSize={256}
+              maxzoom={raster.maxzoom}
+              attribution={raster.attribution}
+            >
+              <Layer id={`basemap-${basemap}-layer`} type="raster" beforeId="cluster-circles" />
+            </Source>
+          )}
 
           {/* Anomali Katmanı */}
           <AnomalyLayer />
         </Map>
 
-        {/* Harita Üstü Kontroller — map dışında render
-            (pointer-events: auto ile tıklanabilir) */}
-        <LayerControls />
+        {/* Harita üstü kontroller (zoom, konum, tarama) */}
         <MapControls />
 
         {/* Tarama İlerleme */}

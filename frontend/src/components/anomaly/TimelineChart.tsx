@@ -41,6 +41,12 @@ export default function TimelineChart({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  // Tooltip render'da ref okumaz: üzerine gelinen nokta durumda tutulur.
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    x: number;
+    y: number;
+    entry: TimeSeriesEntry;
+  } | null>(null);
   const [dims, setDims] = useState(DEFAULT_DIMS);
   const dataPointsRef = useRef<
     Array<{ x: number; y: number; entry: TimeSeriesEntry }>
@@ -254,6 +260,7 @@ export default function TimelineChart({
       });
 
       setHoveredIndex(closest);
+      setHoveredPoint(closest !== null ? dataPointsRef.current[closest] : null);
       canvas.style.cursor = closest !== null ? "pointer" : "default";
     },
     []
@@ -267,12 +274,11 @@ export default function TimelineChart({
 
   const handlePointerLeave = useCallback(() => {
     setHoveredIndex(null);
+    setHoveredPoint(null);
   }, []);
 
   // ── Tooltip ───────────────────────────────────────────────────────
 
-  const hoveredPoint =
-    hoveredIndex !== null ? dataPointsRef.current[hoveredIndex] : null;
 
   return (
     <div className={cn("space-y-2", className)} ref={containerRef}>

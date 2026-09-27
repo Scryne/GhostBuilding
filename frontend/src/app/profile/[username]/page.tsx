@@ -2,18 +2,20 @@ import type { Metadata } from "next";
 import ProfileView from "./ProfileView";
 
 interface ProfilePageProps {
-  params: { username: string };
+  // Next 15+: dinamik parametreler Promise olarak gelir.
+  params: Promise<{ username: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: ProfilePageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: ProfilePageProps): Promise<Metadata> {
+  const { username } = await params;
   return {
-    title: `${params.username} Profili`,
-    description: `${params.username} kullanıcısının GhostBuilding profili, istatistikleri ve rozetleri.`,
+    title: `${username} profili`,
+    description: `${username} kullanıcısının GhostBuilding doğrulama geçmişi ve güven puanı.`,
+    robots: { index: false, follow: false },
   };
 }
 
-export default function ProfilePage({ params }: ProfilePageProps) {
-  return <ProfileView username={params.username} />;
+export default async function ProfilePage({ params }: ProfilePageProps) {
+  const { username } = await params;
+  return <ProfileView username={decodeURIComponent(username)} />;
 }

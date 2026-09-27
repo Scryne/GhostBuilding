@@ -111,7 +111,8 @@ export function useAuth(): UseAuthReturn {
         return;
       }
 
-      // Token geçerli — profili çek
+      // Token geçerli — proxy'nin gördüğü çerezi tazele, profili çek
+      setTokens(token);
       const payload = decodeToken(token);
       try {
         const profile = await authApi.getProfile();

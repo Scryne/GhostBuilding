@@ -1,21 +1,64 @@
-import { withSentryConfig } from "@sentry/nextjs";
+// Sentry 11: yapılandırma sarmalayıcısı ayrı alt yoldan gelir.
+import { withSentryConfig } from "@sentry/nextjs/config";
+import { existsSync, readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
+
+// Yerel derleme: ortam dosyası repo kökünde (compose ile ortak). NEXT_PUBLIC_* değerleri
+// derleme anında koda gömülür; tanımlı değilse MapTiler altlığı sessizce kaybolur. Yalnız
+// NEXT_PUBLIC_* alınır (sırlar derleme sürecine girmez), ortamda zaten olan ezilmez.
+// Docker derlemesinde bu dosya bağlamda yoktur; orada build arg'ları geçerlidir.
+const ROOT_ENV = new URL("../.env", import.meta.url);
+if (existsSync(ROOT_ENV)) {
+  for (const [key, value] of Object.entries(parseEnv(readFileSync(ROOT_ENV, "utf-8")))) {
+    if (key.startsWith("NEXT_PUBLIC_") && process.env[key] === undefined) process.env[key] = value;
+  }
+}
+
+// API kökeni: CSP'deki connect-src/img-src ve kanıt görselleri (/media/...) buradan gelir.
+// Eskiden http://localhost:8000 sabit yazılıydı; üretimde API başka bir adreste olunca
+// harita verisi ve görseller tarayıcıda engellenirdi.
+const API_ORIGIN = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").origin;
+  } catch {
+    return "http://localhost:8000";
+  }
+})();
+
+// Harita altlığı (CARTO), uydu karoları (Esri, MapTiler, IGN), adres arama (Nominatim).
+const MAP_HOSTS = [
+  "https://*.basemaps.cartocdn.com",
+  "https://basemaps.cartocdn.com",
+  "https://server.arcgisonline.com",
+  "https://api.maptiler.com",
+  "https://data.geopf.fr",
+  "https://tile.openstreetmap.org",
+];
+
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
+  `img-src 'self' data: blob: ${API_ORIGIN} ${MAP_HOSTS.join(" ")}`,
+  `connect-src 'self' ${API_ORIGIN} ${MAP_HOSTS.join(" ")} https://nominatim.openstreetmap.org https://*.sentry.io`,
+  // MapLibre çizimi blob: worker'da yapar; worker-src olmadan harita boş kalıyordu.
+  "worker-src 'self' blob:",
+  "child-src blob:",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Standalone output for Docker multi-stage builds
   output: "standalone",
 
-  // Image optimization — allow external tile/satellite image sources
+  // Kanıt görselleri API'den gelir; yeniden sıkıştırılmaz (piksel farkı görünür kalmalı).
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "tile.openstreetmap.org" },
-      { protocol: "https", hostname: "mt0.google.com" },
-      { protocol: "https", hostname: "mt1.google.com" },
-      { protocol: "https", hostname: "ecn.t0.tiles.virtualearth.net" },
-      { protocol: "https", hostname: "**.bing.com" },
-      { protocol: "http", hostname: "localhost" },
-    ],
-    formats: ["image/avif", "image/webp"],
+    remotePatterns: [new URL(`${API_ORIGIN}/media/**`)],
   },
 
   // Disable x-powered-by header for security
@@ -24,62 +67,21 @@ const nextConfig = {
   // Strict React mode for better dev experience
   reactStrictMode: true,
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // Security HTTP Headers
-  // ═══════════════════════════════════════════════════════════════════════
+  // Güvenlik başlıkları — tek kaynak (proxy.ts ikinci bir CSP göndermez).
   async headers() {
     return [
       {
-        // Apply security headers to all routes
         source: "/(.*)",
         headers: [
-          // Clickjacking protection
-          {
-            key: "X-Frame-Options",
-            value: "DENY",
-          },
-          // MIME sniffing protection
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          // XSS protection for legacy browsers
-          {
-            key: "X-XSS-Protection",
-            value: "1; mode=block",
-          },
-          // Referrer policy
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-          // HSTS — enforce HTTPS in production
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains; preload",
-          },
-          // Permissions policy — disable unnecessary browser APIs
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
           {
             key: "Permissions-Policy",
-            value:
-              "camera=(), microphone=(), geolocation=(self), payment=(), usb=()",
+            value: "camera=(), microphone=(), geolocation=(self), payment=(), usb=()",
           },
-          // Content Security Policy
-          {
-            key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://*.openstreetmap.org https://*.google.com https://*.bing.com https://*.virtualearth.net https://basemaps.cartocdn.com",
-              "connect-src 'self' http://localhost:8000 https://*.openstreetmap.org https://*.google.com https://*.bing.com https://*.sentry.io https://basemaps.cartocdn.com",
-              "worker-src 'self' blob:",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join("; "),
-          },
+          { key: "Content-Security-Policy", value: CSP },
         ],
       },
     ];
@@ -105,13 +107,7 @@ const sentryConfig = {
 
   // Build sırasında source map'leri Sentry'ye yükle
   silent: !process.env.CI,
-
-  // Source map'leri deploy sonrası sil (güvenlik)
   widenClientFileUpload: true,
-  hideSourceMaps: true,
-
-  // Otomatik tree-shaking
-  disableLogger: true,
 
   // Tunnel route — CSP ve ad-blocker'ları bypass et
   tunnelRoute: "/monitoring",

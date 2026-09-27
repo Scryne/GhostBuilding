@@ -77,53 +77,39 @@ export default function SearchBar({
 
   const detectedCoords = useMemo(() => parseCoordinates(query), [query]);
 
-  // ── Debounced Nominatim arama ─────────────────────────────────────
+  // ── Nominatim arama ───────────────────────────────────────────────
+  // Nominatim kullanım politikası yazarken otomatik tamamlamaya izin vermez:
+  // arama yalnız gönderimde (Enter) yapılır.
 
-  useEffect(() => {
-    if (!query.trim() || query.length < 3 || detectedCoords) {
-      setResults([]);
-      return;
-    }
+  const runSearch = useCallback(async (q: string) => {
+    if (q.trim().length < 3) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-    const timer = setTimeout(async () => {
-      // Önceki isteği iptal et
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
+    setIsLoading(true);
+    try {
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.searchParams.set("q", q);
+      url.searchParams.set("format", "json");
+      url.searchParams.set("addressdetails", "1");
+      url.searchParams.set("limit", "6");
+      url.searchParams.set("accept-language", "tr");
 
-      setIsLoading(true);
-      try {
-        const url = new URL("https://nominatim.openstreetmap.org/search");
-        url.searchParams.set("q", query);
-        url.searchParams.set("format", "json");
-        url.searchParams.set("addressdetails", "1");
-        url.searchParams.set("limit", "6");
-        url.searchParams.set("accept-language", "tr");
-
-        const res = await fetch(url.toString(), {
-          signal: controller.signal,
-          headers: { "User-Agent": "GhostBuilding/1.0" },
-        });
-
-        if (!res.ok) throw new Error("Nominatim error");
-        const data: NominatimResult[] = await res.json();
-        setResults(data);
-        setIsOpen(data.length > 0);
-        setSelectedIndex(-1);
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          setResults([]);
-        }
-      } finally {
-        setIsLoading(false);
+      const res = await fetch(url.toString(), { signal: controller.signal });
+      if (!res.ok) throw new Error("Nominatim error");
+      const data: NominatimResult[] = await res.json();
+      setResults(data);
+      setIsOpen(data.length > 0);
+      setSelectedIndex(-1);
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        setResults([]);
       }
-    }, 300);
-
-    return () => {
-      clearTimeout(timer);
-      abortRef.current?.abort();
-    };
-  }, [query, detectedCoords]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // ── Seçim işleyicileri ────────────────────────────────────────────
 
@@ -157,10 +143,12 @@ export default function SearchBar({
       } else if (selectedIndex >= 0 && results[selectedIndex]) {
         handleSelect(results[selectedIndex]);
       } else {
+        void runSearch(query);
         onTextSearch?.(query);
       }
     },
     [
+      runSearch,
       query,
       detectedCoords,
       handleCoordSelect,

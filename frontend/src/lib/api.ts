@@ -26,6 +26,7 @@ import type {
   VerifyResponse,
   VerificationSummary,
   ApiError,
+  MyVerification,
 } from "./types";
 
 // ── Base URL ──────────────────────────────────────────────────────────────
@@ -52,9 +53,30 @@ export function getRefreshToken(): string | null {
   return localStorage.getItem(REFRESH_KEY);
 }
 
+/**
+ * Proxy (src/proxy.ts) localStorage'ı göremez; korumalı sayfalara geçiş için erişim token'ı
+ * aynı ada sahip bir çereze de yazılır. Ömrü token'ın kendi `exp` alanına eşitlenir.
+ */
+function writeTokenCookie(access: string | null): void {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  if (!access) {
+    document.cookie = `${TOKEN_KEY}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+    return;
+  }
+  let maxAge = 3600;
+  try {
+    const payload = JSON.parse(atob(access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    maxAge = Math.max(0, Math.floor(payload.exp - Date.now() / 1000));
+  } catch {
+    // Çözülemeyen token: varsayılan bir saat
+  }
+  document.cookie = `${TOKEN_KEY}=${access}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
+}
+
 export function setTokens(access: string, refresh?: string | null): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(TOKEN_KEY, access);
+  writeTokenCookie(access);
   if (refresh) {
     localStorage.setItem(REFRESH_KEY, refresh);
   }
@@ -64,6 +86,16 @@ export function clearTokens(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  writeTokenCookie(null);
+}
+
+/** API'nin servis ettiği göreli medya yollarını (/media/...) tam adrese çevirir. */
+export function resolveMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith("/media/")) {
+    return new URL(url, API_BASE_URL).toString();
+  }
+  return url;
 }
 
 // ── Axios Instance ────────────────────────────────────────────────────────
@@ -206,6 +238,12 @@ export const authApi = {
     api.post<MessageResponse>("/auth/logout", body || {}).then((r) => r.data),
 
   /** GET /auth/me — Profil bilgisi */
+  /** GET /auth/me/verifications — Kullanıcının kendi oy geçmişi */
+  getMyVerifications: (limit = 20) =>
+    api
+      .get<MyVerification[]>("/auth/me/verifications", { params: { limit } })
+      .then((r) => r.data),
+
   getProfile: () =>
     api.get<UserProfile>("/auth/me").then((r) => r.data),
 
@@ -225,6 +263,7 @@ export interface AnomalyListParams {
   category?: string;
   min_confidence?: number;
   status?: string;
+  sort?: "newest" | "confidence";
   page?: number;
   limit?: number;
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/ui/Toast";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // ── Fontlar ───────────────────────────────────────────────────────────────
@@ -19,69 +20,49 @@ const jetbrainsMono = JetBrains_Mono({
 
 // ── Metadata ──────────────────────────────────────────────────────────────
 
+const DESCRIPTION =
+  "Aynı konumun farklı uydu kaynaklarındaki görüntülerini karşılaştırır; bulanıklaştırma ve " +
+  "sıra dışı farkları, sıradan konumlara göre kalibre edilmiş puanla işaretler.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://ghostbuilding.dev"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "GhostBuilding — Global Map Intelligence",
-    template: "%s | GhostBuilding — Global Map Intelligence",
+    default: "GhostBuilding — uydu görüntüsü farkları",
+    template: "%s · GhostBuilding",
   },
-  description:
-    "Discover censored areas, hidden structures and map anomalies worldwide.",
-  keywords: [
-    "OSINT",
-    "map anomalies",
-    "censored maps",
-    "hidden buildings",
-    "satellite intelligence",
-  ],
-  authors: [{ name: "GhostBuilding Team" }],
+  description: DESCRIPTION,
+  keywords: ["OSINT", "uydu görüntüsü", "harita sansürü", "görüntü karşılaştırma", "Esri", "IGN"],
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "tr_TR",
     siteName: "GhostBuilding",
-    title: "GhostBuilding — Global Map Intelligence",
-    description:
-      "Discover censored areas, hidden structures and map anomalies worldwide.",
-    images: [
-      {
-        url: "/api/og", // Fallback OG Image
-        width: 1200,
-        height: 630,
-        alt: "GhostBuilding OG Image",
-      },
-    ],
+    title: "GhostBuilding — uydu görüntüsü farkları",
+    description: DESCRIPTION,
+    images: [{ url: "/api/og", width: 1200, height: 630, alt: "GhostBuilding" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GhostBuilding — Global Map Intelligence",
-    description:
-      "Discover censored areas, hidden structures and map anomalies worldwide.",
+    title: "GhostBuilding — uydu görüntüsü farkları",
+    description: DESCRIPTION,
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  alternates: {
-    canonical: "/",
-  },
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0A0E1A",
+  themeColor: "#0F1117",
   width: "device-width",
   initialScale: 1,
 };
 
-// ── Root Layout ───────────────────────────────────────────────────────────
-
-// Organization Schema (JSON-LD)
-const organizationSchema = {
+const websiteSchema = {
   "@context": "https://schema.org",
-  "@type": "Organization",
+  "@type": "WebApplication",
   name: "GhostBuilding",
-  url: "https://ghostbuilding.dev",
-  logo: "https://ghostbuilding.dev/logo.png",
-  description: "Global Map Intelligence & OSINT platform for identifying geographic manipulation.",
+  url: SITE_URL,
+  applicationCategory: "Geospatial analysis",
+  inLanguage: "tr",
+  description: DESCRIPTION,
 };
 
 export default function RootLayout({
@@ -90,11 +71,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="tr" className="dark" suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
       </head>
       <body

@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# build sırasında node_modules/maplibre-gl/dist altından kopyalanır (scripts/copy-maplibre-worker.mjs)
+/public/maplibre/

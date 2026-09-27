@@ -1,291 +1,158 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// ProviderComparison.tsx — Sağlayıcı görüntü karşılaştırması
-// İki sağlayıcı seçimi, sürüklenebilir before/after slider, diff skoru.
+// ProviderComparison.tsx — İki kaynağın aynı karosunu üst üste kaydırarak karşılaştırma
+// Görseller API'nin kaydettiği kanıt karolarıdır (/media/...), yeniden sıkıştırılmaz.
 // ═══════════════════════════════════════════════════════════════════════════
 
 "use client";
 
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
+  type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { cn } from "@/lib/utils";
-import type { AnomalyImage, ImageProvider } from "@/lib/types";
 import Image from "next/image";
-
-// ── Sağlayıcı Etiketleri ─────────────────────────────────────────────────
-
-const PROVIDER_LABELS: Record<string, string> = {
-  OSM: "OpenStreetMap",
-  GOOGLE: "Google Maps",
-  BING: "Bing Maps",
-  SENTINEL: "Sentinel-2",
-  YANDEX: "Yandex Maps",
-  WAYBACK: "Wayback",
-};
-
-const PROVIDER_COLORS: Record<string, string> = {
-  OSM: "#7EB26D",
-  GOOGLE: "#4285F4",
-  BING: "#00A4EF",
-  SENTINEL: "#1DB954",
-  YANDEX: "#FC3F1D",
-  WAYBACK: "#9B59B6",
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
+import { resolveMediaUrl } from "@/lib/api";
+import { cn, providerMeta } from "@/lib/utils";
+import type { AnomalyImage } from "@/lib/types";
 
 interface ProviderComparisonProps {
   images: AnomalyImage[];
+  /** Başlangıçta karşılaştırılacak çift (ör. en bulanık ↔ en keskin) */
+  initialPair?: [string, string];
   className?: string;
 }
 
 export default function ProviderComparison({
   images,
+  initialPair,
   className,
 }: ProviderComparisonProps) {
-  // Mevcut provider'ları çıkar
-  const availableProviders = Array.from(
-    new Set(images.map((img) => img.provider))
+  const available = Array.from(new Set(images.map((img) => img.provider.toLowerCase())));
+  const pick = (want: string | undefined, fallback: number) =>
+    want && available.includes(want.toLowerCase()) ? want.toLowerCase() : available[fallback];
+
+  const [left, setLeft] = useState<string>(() => pick(initialPair?.[0], 0) ?? "");
+  const [right, setRight] = useState<string>(
+    () => pick(initialPair?.[1], 1) ?? available[0] ?? ""
   );
 
-  const [leftProvider, setLeftProvider] = useState<ImageProvider>(
-    availableProviders[0] || ("GOOGLE" as ImageProvider)
-  );
-  const [rightProvider, setRightProvider] = useState<ImageProvider>(
-    availableProviders[1] || availableProviders[0] || ("OSM" as ImageProvider)
-  );
-
-  const leftImage = images.find((img) => img.provider === leftProvider);
-  const rightImage = images.find((img) => img.provider === rightProvider);
-
-  // Diff skoru
-  const diffScore = (() => {
-    const leftDiff = leftImage?.diff_score;
-    const rightDiff = rightImage?.diff_score;
-    if (leftDiff != null && rightDiff != null)
-      return ((leftDiff + rightDiff) / 2).toFixed(1);
-    if (leftDiff != null) return leftDiff.toFixed(1);
-    if (rightDiff != null) return rightDiff.toFixed(1);
-    return null;
-  })();
-
-  const diffColor =
-    diffScore !== null
-      ? parseFloat(diffScore) >= 70
-        ? "text-red-400"
-        : parseFloat(diffScore) >= 40
-        ? "text-yellow-400"
-        : "text-emerald-400"
-      : "text-gray-500";
-
-  // ── Before/After Slider ────────────────────────────────────────────
+  const leftImage = images.find((img) => img.provider.toLowerCase() === left);
+  const rightImage = images.find((img) => img.provider.toLowerCase() === right);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [sliderPos, setSliderPos] = useState(50); // yüzde
-  const [isDragging, setIsDragging] = useState(false);
+  const [sliderPos, setSliderPos] = useState(50);
+  const [dragging, setDragging] = useState(false);
 
-  const updateSlider = useCallback(
-    (clientX: number) => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const x = clientX - rect.left;
-      const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
-      setSliderPos(pct);
-    },
-    []
-  );
-
-  const onPointerDown = useCallback(
-    (e: ReactPointerEvent) => {
-      setIsDragging(true);
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      updateSlider(e.clientX);
-    },
-    [updateSlider]
-  );
-
-  const onPointerMove = useCallback(
-    (e: ReactPointerEvent) => {
-      if (!isDragging) return;
-      updateSlider(e.clientX);
-    },
-    [isDragging, updateSlider]
-  );
-
-  const onPointerUp = useCallback(() => {
-    setIsDragging(false);
+  const updateSlider = useCallback((clientX: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setSliderPos(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)));
   }, []);
 
-  // Touch desteği — container'dan pointer yakalama
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    el.style.touchAction = "none";
-  }, []);
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    setDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    updateSlider(e.clientX);
+  };
 
-  // ── Render ─────────────────────────────────────────────────────────
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowLeft") setSliderPos((p) => Math.max(0, p - 5));
+    if (e.key === "ArrowRight") setSliderPos((p) => Math.min(100, p + 5));
+  };
 
-  const hasImages = leftImage && rightImage;
+  if (available.length < 2) {
+    return (
+      <p className={cn("text-xs text-muted", className)}>
+        Karşılaştırma için en az iki kaynağın görüntüsü gerekir.
+      </p>
+    );
+  }
+
+  const leftMeta = providerMeta(left);
+  const rightMeta = providerMeta(right);
 
   return (
     <div className={cn("space-y-3", className)}>
-      {/* Üst: Diff Skoru */}
-      {diffScore !== null && (
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Fark Skoru
-          </span>
-          <div className="flex items-center gap-1.5">
-            <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-all duration-500",
-                  parseFloat(diffScore) >= 70
-                    ? "bg-red-500"
-                    : parseFloat(diffScore) >= 40
-                    ? "bg-yellow-500"
-                    : "bg-emerald-500"
-                )}
-                style={{ width: `${Math.min(100, parseFloat(diffScore))}%` }}
-              />
-            </div>
-            <span className={cn("text-xs font-bold tabular-nums", diffColor)}>
-              {diffScore}%
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Provider Seçimi */}
       <div className="grid grid-cols-2 gap-2">
-        <ProviderSelect
-          label="Sol"
-          value={leftProvider}
-          options={availableProviders}
-          onChange={setLeftProvider}
-        />
-        <ProviderSelect
-          label="Sağ"
-          value={rightProvider}
-          options={availableProviders}
-          onChange={setRightProvider}
-        />
+        <ProviderSelect label="Sol kaynak" value={left} options={available} onChange={setLeft} />
+        <ProviderSelect label="Sağ kaynak" value={right} options={available} onChange={setRight} />
       </div>
 
-      {/* Before/After Slider */}
-      {hasImages ? (
+      {leftImage && rightImage && (
         <div
           ref={containerRef}
-          className="relative w-full aspect-square rounded-xl overflow-hidden cursor-col-resize select-none border border-white/5"
+          role="slider"
+          tabIndex={0}
+          aria-label={`${leftMeta.label} ile ${rightMeta.label} karşılaştırma ayırıcısı`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(sliderPos)}
           onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          id="provider-comparison-slider"
+          onPointerMove={(e) => dragging && updateSlider(e.clientX)}
+          onPointerUp={() => setDragging(false)}
+          onKeyDown={onKeyDown}
+          className="relative w-full aspect-square rounded-xl overflow-hidden cursor-col-resize select-none touch-none border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
         >
           <Image
-            src={leftImage.image_url}
-            alt={`${PROVIDER_LABELS[leftProvider] || leftProvider}`}
+            src={resolveMediaUrl(leftImage.image_url) ?? ""}
+            alt={`${leftMeta.label} karosu`}
             fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover"
+            unoptimized
+            sizes="(max-width: 768px) 100vw, 480px"
+            className="object-cover [image-rendering:pixelated]"
             draggable={false}
           />
-
-          {/* Sağ resim (kırpılmış) — dynamic external tile, not optimizable */}
-          <div
-            className="absolute inset-0 overflow-hidden"
-            style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}
-          >
+          <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}>
             <Image
-              src={rightImage.image_url}
-              alt={`${PROVIDER_LABELS[rightProvider] || rightProvider}`}
+              src={resolveMediaUrl(rightImage.image_url) ?? ""}
+              alt={`${rightMeta.label} karosu`}
               fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className="object-cover"
+              unoptimized
+              sizes="(max-width: 768px) 100vw, 480px"
+              className="object-cover [image-rendering:pixelated]"
               draggable={false}
             />
           </div>
-
-          {/* Dikey ayırıcı çizgi */}
           <div
-            className="absolute top-0 bottom-0 z-10"
+            className="absolute inset-y-0 w-0.5 bg-white/90 shadow-[0_0_6px_rgba(0,0,0,0.6)]"
             style={{ left: `${sliderPos}%`, transform: "translateX(-50%)" }}
           >
-            {/* Çizgi */}
-            <div className="absolute inset-0 w-[2px] bg-white/80 shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
-
-            {/* Tutamak */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md shadow-lg flex items-center justify-center">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="none"
-                className="text-gray-800"
-              >
-                <path
-                  d="M4 3L1 7L4 11"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M10 3L13 7L10 11"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-8 rounded-full bg-white text-gray-900 shadow-lg flex items-center justify-center text-xs font-bold">
+              ⟷
             </div>
           </div>
-
-          {/* Sağlayıcı etiketleri */}
-          <div className="absolute top-2 left-2 z-20">
-            <span
-              className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md backdrop-blur-md"
-              style={{
-                backgroundColor: `${PROVIDER_COLORS[leftProvider] || "#2E6DA4"}33`,
-                color: PROVIDER_COLORS[leftProvider] || "#2E6DA4",
-                border: `1px solid ${PROVIDER_COLORS[leftProvider] || "#2E6DA4"}44`,
-              }}
-            >
-              {PROVIDER_LABELS[leftProvider] || leftProvider}
-            </span>
-          </div>
-          <div className="absolute top-2 right-2 z-20">
-            <span
-              className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md backdrop-blur-md"
-              style={{
-                backgroundColor: `${PROVIDER_COLORS[rightProvider] || "#457B9D"}33`,
-                color: PROVIDER_COLORS[rightProvider] || "#457B9D",
-                border: `1px solid ${PROVIDER_COLORS[rightProvider] || "#457B9D"}44`,
-              }}
-            >
-              {PROVIDER_LABELS[rightProvider] || rightProvider}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="w-full aspect-square rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-2xl mb-2 opacity-30">🖼️</div>
-            <span className="text-xs text-gray-500">
-              Karşılaştırma için en az 2 sağlayıcı gerekli
-            </span>
-          </div>
+          <ProviderTag meta={leftMeta} className="left-2" />
+          <ProviderTag meta={rightMeta} className="right-2" />
         </div>
       )}
+      <p className="text-[11px] text-muted">
+        Ayırıcıyı sürükleyin ya da odaklayıp ← → tuşlarını kullanın.
+      </p>
     </div>
   );
 }
 
-// ── Provider Dropdown ────────────────────────────────────────────────────
+function ProviderTag({
+  meta,
+  className,
+}: {
+  meta: ReturnType<typeof providerMeta>;
+  className: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "absolute top-2 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-black/70 border",
+        className
+      )}
+      style={{ color: meta.hex, borderColor: `${meta.hex}55` }}
+    >
+      {meta.label}
+    </span>
+  );
+}
 
 function ProviderSelect({
   label,
@@ -294,50 +161,24 @@ function ProviderSelect({
   onChange,
 }: {
   label: string;
-  value: ImageProvider;
-  options: ImageProvider[];
-  onChange: (v: ImageProvider) => void;
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
 }) {
   return (
-    <div className="relative">
-      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1 px-1">
-        {label}
-      </label>
+    <label className="block">
+      <span className="block text-[11px] font-medium text-muted mb-1">{label}</span>
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value as ImageProvider)}
-        className={cn(
-          "w-full appearance-none px-3 py-1.5 rounded-lg text-xs font-medium",
-          "bg-white/[0.03] border border-white/8 text-gray-200",
-          "hover:bg-white/[0.05] hover:border-white/12",
-          "focus:outline-none focus:ring-1 focus:ring-secondary/40",
-          "transition-all duration-200 cursor-pointer"
-        )}
-        id={`provider-select-${label.toLowerCase()}`}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg bg-surface border border-border px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50"
       >
-        {options.map((p) => (
-          <option key={p} value={p} className="bg-surface text-gray-200">
-            {PROVIDER_LABELS[p] || p}
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {providerMeta(opt).label}
           </option>
         ))}
       </select>
-      {/* Dropdown ok */}
-      <div className="absolute right-2.5 bottom-2 pointer-events-none">
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          fill="none"
-          className="text-gray-500"
-        >
-          <path
-            d="M2 4L5 7L8 4"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-    </div>
+    </label>
   );
 }

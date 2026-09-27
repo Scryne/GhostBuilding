@@ -9,14 +9,13 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAnomalyList } from "@/hooks/useAnomaly";
+import { AnomalyStatus } from "@/lib/types";
 import type { AnomalyListParams } from "@/lib/api";
 
 import {
   StatsBar,
-  SearchBar,
   FilterPanel,
   AnomalyCard,
-  FeaturedAnomalies,
   DEFAULT_FILTERS,
   type ExploreFilters,
 } from "@/components/explore";
@@ -34,12 +33,11 @@ import {
 
 // ── Sıralama Seçenekleri ──────────────────────────────────────────────────
 
-type SortOption = "confidence" | "newest" | "verified";
+type SortOption = "confidence" | "newest";
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
-  { value: "confidence", label: "En Yüksek Güven" },
-  { value: "newest", label: "En Yeni" },
-  { value: "verified", label: "En Çok Doğrulanan" },
+  { value: "confidence", label: "En yüksek puan" },
+  { value: "newest", label: "En yeni" },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -60,21 +58,23 @@ export default function ExploreContent() {
     const params: AnomalyListParams = {
       page,
       limit,
+      sort: sortBy,
       min_confidence: filters.minConfidence,
     };
 
     // Kategori filtresi (hepsi seçiliyse gönderme)
-    if (filters.categories.size < 4 && filters.categories.size > 0) {
-      params.category = Array.from(filters.categories).join(",");
+    if (filters.categories.size < 4) {
+      params.category = Array.from(filters.categories).join(",") || "NONE";
     }
 
     // Durum filtresi
-    if (filters.statuses.size < 4 && filters.statuses.size > 0) {
-      params.status = Array.from(filters.statuses).join(",");
+    // Hiç durum seçili değilse API'ye liste gitmez; sonuç boş gösterilir (aşağıda).
+    if (filters.statuses.size < 4) {
+      params.status = Array.from(filters.statuses).join(",") || "NONE";
     }
 
     return params;
-  }, [filters, page]);
+  }, [filters, page, sortBy]);
 
   // ── SWR ile veri çek ──────────────────────────────────────────────
 
@@ -84,40 +84,6 @@ export default function ExploreContent() {
   const totalPages = pagination?.total_pages ?? 1;
 
   // ── Arama callback'leri ───────────────────────────────────────────
-
-  const handleLocationSelect = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    (lat: number, lng: number, _label?: string) => {
-      router.push(`/?lat=${lat}&lng=${lng}&zoom=14`);
-    },
-    [router]
-  );
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleTextSearch = useCallback((_query: string) => {
-    // TODO: Metin tabanlı anomali arama — backend desteği eklenince aktifleşecek
-    setPage(1);
-  }, []);
-
-  // ── Anomali tıklaması ────────────────────────────────────────────
-
-  const handleAnomalyClick = useCallback(
-    (id: string, lat: number, lng: number) => {
-      router.push(`/?lat=${lat}&lng=${lng}&zoom=16&anomaly=${id}`);
-    },
-    [router]
-  );
-
-  // ── Featured tıklaması ───────────────────────────────────────────
-
-  const handleFeaturedClick = useCallback(
-    (id: string, lat: number, lng: number) => {
-      router.push(`/?lat=${lat}&lng=${lng}&zoom=16&anomaly=${id}`);
-    },
-    [router]
-  );
-
-  // ── Sayfalama ─────────────────────────────────────────────────────
 
   const handlePrevPage = useCallback(() => {
     setPage((p) => Math.max(1, p - 1));
@@ -134,10 +100,8 @@ export default function ExploreContent() {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.categories.size < 4) count++;
-    if (filters.minConfidence > 0 || filters.maxConfidence < 100) count++;
-    if (filters.statuses.size < 3) count++;
-    if (filters.dateFrom || filters.dateTo) count++;
-    if (filters.region) count++;
+    if (filters.minConfidence > 0) count++;
+    if (filters.statuses.size !== 3 || filters.statuses.has(AnomalyStatus.REJECTED)) count++;
     return count;
   }, [filters]);
 
@@ -166,18 +130,8 @@ export default function ExploreContent() {
             {/* Ayırıcı */}
             <div className="w-px h-6 bg-white/[0.06] hidden sm:block" />
 
-            {/* Sayfa başlığı */}
-            <span className="text-sm font-semibold text-gray-400 hidden sm:block">
-              Keşfet
-            </span>
-
-            {/* Arama */}
-            <SearchBar
-              onLocationSelect={handleLocationSelect}
-              onTextSearch={handleTextSearch}
-              className="flex-1 max-w-xl"
-            />
-
+            <h1 className="text-sm font-semibold text-foreground">Bulgular</h1>
+            <div className="flex-1" />
             {/* Mobil filtre butonu */}
             <button
               onClick={() => setMobileFiltersOpen(true)}
@@ -216,7 +170,12 @@ export default function ExploreContent() {
 
       {/* ── İstatistik Çubuğu ────────────────────────────────────── */}
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 mt-4">
-        <StatsBar className="rounded-2xl" />
+        <StatsBar />
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted">
+          Her bulgu, aynı konumun farklı uydu kaynaklarındaki karolarının karşılaştırılmasından
+          doğar. Puan, sinyalin sıradan konumlara göre ne kadar sıra dışı olduğunu gösterir:
+          50, sıradan konumların %99&apos;udur. Kartı açıp karoları yan yana görebilirsiniz.
+        </p>
       </div>
 
       {/* ── Ana İçerik ───────────────────────────────────────────── */}
@@ -232,10 +191,6 @@ export default function ExploreContent() {
             className="flex-1"
           />
 
-          {/* Öne Çıkanlar */}
-          <div className="glass-panel p-4">
-            <FeaturedAnomalies onAnomalyClick={handleFeaturedClick} />
-          </div>
         </aside>
 
         {/* ── Mobil Filtre Overlay ──────────────────────────────── */}
@@ -267,12 +222,6 @@ export default function ExploreContent() {
                     setPage(1);
                   }}
                 />
-                <div className="glass-panel p-4">
-                  <FeaturedAnomalies onAnomalyClick={(id, lat, lng) => {
-                    setMobileFiltersOpen(false);
-                    handleFeaturedClick(id, lat, lng);
-                  }} />
-                </div>
               </div>
             </div>
           </div>
@@ -289,7 +238,7 @@ export default function ExploreContent() {
                     <span className="font-bold text-white">
                       {pagination.total.toLocaleString("tr-TR")}
                     </span>{" "}
-                    anomali bulundu
+                    bulgu
                   </>
                 ) : isLoading ? (
                   "Yükleniyor..."
@@ -380,13 +329,6 @@ export default function ExploreContent() {
                 <AnomalyCard
                   key={anomaly.id}
                   anomaly={anomaly}
-                  onClick={() =>
-                    handleAnomalyClick(
-                      anomaly.id,
-                      anomaly.lat,
-                      anomaly.lng
-                    )
-                  }
                 />
               ))}
             </div>

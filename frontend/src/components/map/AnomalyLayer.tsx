@@ -7,28 +7,30 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Source, Layer, Popup, useMap, type MapLayerMouseEvent } from "react-map-gl/maplibre";
-import type { CircleLayerSpecification, SymbolLayerSpecification } from "maplibre-gl";
+import type {
+  CircleLayerSpecification,
+  GeoJSONSource,
+  MapMouseEvent,
+  SymbolLayerSpecification,
+} from "maplibre-gl";
 import { useMapContext } from "./GhostMap";
 import { useMapAnomalies } from "@/hooks/useAnomaly";
-import { CATEGORY_LABELS, formatCoordsCompact } from "@/lib/utils";
+import { CATEGORY_COLORS, CATEGORY_LABELS, formatCoordsCompact } from "@/lib/utils";
 import type { AnomalyCategory } from "@/lib/types";
 
 // ── Kategori Renk Haritası (hex) ──────────────────────────────────────────
 
-const CATEGORY_HEX: Record<string, string> = {
-  GHOST_BUILDING: "#F4A261",
-  HIDDEN_STRUCTURE: "#E63946",
-  CENSORED_AREA: "#9B2226",
-  IMAGE_DISCREPANCY: "#457B9D",
-};
+const CATEGORY_HEX: Record<string, string> = Object.fromEntries(
+  Object.entries(CATEGORY_COLORS).map(([key, value]) => [key, value.hex])
+);
 
 // ── Cluster renk skalası ──────────────────────────────────────────────────
 
 const CLUSTER_COLORS = [
-  { count: 100, color: "#E63946" },
-  { count: 50, color: "#F4A261" },
-  { count: 20, color: "#457B9D" },
-  { count: 0, color: "#2E6DA4" },
+  { count: 100, color: "#F4A261" },
+  { count: 50, color: "#6CB4EE" },
+  { count: 20, color: "#4A7CF7" },
+  { count: 0, color: "#3A64D6" },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -138,7 +140,7 @@ export default function AnomalyLayer() {
       // Cluster tıklaması — zoom in
       if (props?.cluster) {
         const clusterId = props.cluster_id;
-        const source = map?.getSource("anomalies") as maplibregl.GeoJSONSource | undefined;
+        const source = map?.getSource("anomalies") as GeoJSONSource | undefined;
         if (source && feature.geometry.type === "Point") {
           const coords = feature.geometry.coordinates as [number, number];
           source.getClusterExpansionZoom(clusterId).then((zoom) => {
@@ -168,16 +170,16 @@ export default function AnomalyLayer() {
 
     const mapInstance = map;
 
-    mapInstance.on("mouseenter", "unclustered-point", onMouseEnter as unknown as (e: maplibregl.MapMouseEvent) => void);
+    mapInstance.on("mouseenter", "unclustered-point", onMouseEnter as unknown as (e: MapMouseEvent) => void);
     mapInstance.on("mouseleave", "unclustered-point", onMouseLeave);
-    mapInstance.on("click", "unclustered-point", onClick as unknown as (e: maplibregl.MapMouseEvent) => void);
-    mapInstance.on("click", "cluster-circles", onClick as unknown as (e: maplibregl.MapMouseEvent) => void);
+    mapInstance.on("click", "unclustered-point", onClick as unknown as (e: MapMouseEvent) => void);
+    mapInstance.on("click", "cluster-circles", onClick as unknown as (e: MapMouseEvent) => void);
 
     return () => {
-      mapInstance.off("mouseenter", "unclustered-point", onMouseEnter as unknown as (e: maplibregl.MapMouseEvent) => void);
+      mapInstance.off("mouseenter", "unclustered-point", onMouseEnter as unknown as (e: MapMouseEvent) => void);
       mapInstance.off("mouseleave", "unclustered-point", onMouseLeave);
-      mapInstance.off("click", "unclustered-point", onClick as unknown as (e: maplibregl.MapMouseEvent) => void);
-      mapInstance.off("click", "cluster-circles", onClick as unknown as (e: maplibregl.MapMouseEvent) => void);
+      mapInstance.off("click", "unclustered-point", onClick as unknown as (e: MapMouseEvent) => void);
+      mapInstance.off("click", "cluster-circles", onClick as unknown as (e: MapMouseEvent) => void);
     };
   }, [map, onMouseEnter, onMouseLeave, onClick]);
 

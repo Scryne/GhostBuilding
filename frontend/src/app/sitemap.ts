@@ -1,46 +1,30 @@
-import { MetadataRoute } from 'next'
+import type { MetadataRoute } from "next";
+import { SERVER_API_URL, SITE_URL } from "@/lib/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ghostbuilding.dev';
-  
   const staticRoutes: MetadataRoute.Sitemap = [
-    {
-      url: `${baseUrl}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/explore`,
-      lastModified: new Date(),
-      changeFrequency: 'hourly',
-      priority: 0.8,
-    },
+    { url: SITE_URL, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
+    { url: `${SITE_URL}/explore`, lastModified: new Date(), changeFrequency: "hourly", priority: 0.8 },
   ];
 
+  // Yalnız topluluk tarafından doğrulanmış bulgular dizine girer (detay sayfası da aynı kuralı uygular).
+  // Liste yanıtı { data, pagination } biçimindedir; eskiden "items" okunduğu için hiçbir bulgu girmiyordu.
   let dynamicRoutes: MetadataRoute.Sitemap = [];
   try {
-    const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-    const isServer = typeof window === 'undefined';
-    const apiUrl = isServer && rawApiUrl.startsWith('/') ? `http://backend:8000${rawApiUrl}` : rawApiUrl;
-    
-    // Sadece VERIFIED olan anomalileri sitemap'e dahil et
-    const res = await fetch(`${apiUrl}/anomalies/?status=VERIFIED&limit=1000`, { 
-      next: { revalidate: 3600 * 24 } // günlük yenile
+    const res = await fetch(`${SERVER_API_URL}/anomalies/?status=VERIFIED&min_confidence=0&limit=100`, {
+      next: { revalidate: 3600 },
     });
-    
     if (res.ok) {
-        const data = await res.json();
-        const anomalies = data.items || [];
-        dynamicRoutes = anomalies.map((anomaly: { id: string, updated_at: string, created_at: string }) => ({
-            url: `${baseUrl}/explore/${anomaly.id}`,
-            lastModified: new Date(anomaly.updated_at || anomaly.created_at),
-            changeFrequency: 'weekly',
-            priority: 0.6,
-        }));
+      const body: { data: Array<{ id: string; detected_at: string | null }> } = await res.json();
+      dynamicRoutes = body.data.map((a) => ({
+        url: `${SITE_URL}/explore/${a.id}`,
+        lastModified: a.detected_at ? new Date(a.detected_at) : new Date(),
+        changeFrequency: "weekly",
+        priority: 0.6,
+      }));
     }
   } catch (error) {
-    console.error("Failed to generate sitemap for anomalies:", error);
+    console.error("Sitemap için bulgular alınamadı:", error);
   }
 
   return [...staticRoutes, ...dynamicRoutes];
