@@ -1,74 +1,58 @@
-name: Weekly Security Audit
+name: Weekly security audit
 
 on:
   schedule:
-    - cron: '0 3 * * 1' # Every Monday at 03:00 AM UTC
-  workflow_dispatch: # Enable manual triggers
+    - cron: "0 3 * * 1" # Mondays 03:00 UTC
+  workflow_dispatch:
 
+permissions:
+  contents: read
+
+# The same dependency audits also run on every push (ci.yml). This weekly run catches
+# advisories published while the code did not change, and scans the built images.
 jobs:
-  python-deps-audit:
-    name: Python Dependecy Security
+  python-deps:
+    name: Python dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
-          
-      - name: Install pip-audit
-        run: pip install pip-audit
-        
-      - name: Scan requirements with pip-audit
-        run: |
-          cd backend
-          pip-audit -r requirements.txt
+          python-version: "3.12"
+      - run: pip install pip-audit
+      - run: pip-audit -r backend/requirements.txt
 
-  npm-deps-audit:
-    name: NPM Dependency Security
+  npm-deps:
+    name: npm dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
-          
-      - name: Scan frontend dependencies
-        run: |
-          cd frontend
-          # Fails pipeline only if Critical vulnerabilites found
-          npm audit --audit-level=critical
+          node-version: "22"
+      - working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
 
-  container-security:
-    name: Trivy Container Scan
+  containers:
+    name: Container images (Trivy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Build local benchmark images
+      - uses: actions/checkout@v7
+      - name: Build images
         run: |
-          docker build -t ghostbuilding-backend:local ./backend
-          docker build -t ghostbuilding-frontend:local ./frontend
-          
-      - name: Run Trivy Scanner (Backend)
-        uses: aquasecurity/trivy-action@master
+          docker build -t ghostbuilding-backend:scan ./backend
+          docker build -t ghostbuilding-frontend:scan ./frontend
+      - name: Trivy (backend)
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: 'ghostbuilding-backend:local'
-          format: 'table'
-          exit-code: '1'
+          image-ref: ghostbuilding-backend:scan
+          exit-code: "1"
           ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL'
-          
-      - name: Run Trivy Scanner (Frontend)
-        uses: aquasecurity/trivy-action@master
+          severity: CRITICAL,HIGH
+      - name: Trivy (frontend)
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: 'ghostbuilding-frontend:local'
-          format: 'table'
-          exit-code: '1'
+          image-ref: ghostbuilding-frontend:scan
+          exit-code: "1"
           ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL'
+          severity: CRITICAL,HIGH

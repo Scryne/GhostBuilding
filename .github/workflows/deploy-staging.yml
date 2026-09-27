@@ -1,9 +1,9 @@
 name: Staging Deployment
 
+# Manual only: there is no staging server yet. Set STAGING_HOST, STAGING_USERNAME and
+# STAGING_SSH_KEY secrets before running it.
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -18,10 +18,10 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -29,12 +29,12 @@ jobs:
           
       - name: Extract metadata for Backend Image
         id: meta-backend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
 
       - name: Build and push Backend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           push: true
@@ -43,12 +43,12 @@ jobs:
 
       - name: Extract metadata for Frontend Image
         id: meta-frontend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
 
       - name: Build and push Frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           push: true
@@ -73,10 +73,10 @@ jobs:
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             # Pull latest images corresponding to prod tags
-            docker-compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml pull
             
             # Migrate Database Context
-            docker-compose -f docker-compose.prod.yml run --rm backend python -m alembic upgrade head
+            docker compose -f docker-compose.prod.yml run --rm backend python -m alembic upgrade head
             
             # Recreate containers without downtime
-            docker-compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d
