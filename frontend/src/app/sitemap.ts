@@ -24,7 +24,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }));
     }
   } catch (error) {
-    console.error("Sitemap için bulgular alınamadı:", error);
+    // Derleme anında API kapalı olabilir; sitemap saatlik yenilemede dolar.
+    const cause = (error as { cause?: { code?: string } }).cause?.code;
+    console.warn(`Sitemap: bulgular alınamadı (${cause ?? String(error)}), yalnız statik sayfalar.`);
   }
 
   return [...staticRoutes, ...dynamicRoutes];
