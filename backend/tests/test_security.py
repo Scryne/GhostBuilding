@@ -690,143 +690,7 @@ class TestSensitiveLogFilter:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 6. API Key Provider Tests
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-class TestAPIKeyProvider:
-    """API key yönetimi testleri."""
-
-    def test_get_provider(self):
-        """Tanımlı provider'ı almak."""
-        from app.utils.api_key_provider import get_api_key_provider
-
-        provider = get_api_key_provider("google_maps")
-        assert provider.provider_name == "Google Maps"
-
-    def test_get_provider_bing(self):
-        """Bing maps provider."""
-        from app.utils.api_key_provider import get_api_key_provider
-
-        provider = get_api_key_provider("bing_maps")
-        assert provider.provider_name == "Bing Maps"
-
-    def test_get_provider_sentinel(self):
-        """Sentinel Hub provider."""
-        from app.utils.api_key_provider import get_api_key_provider
-
-        provider = get_api_key_provider("sentinel_hub")
-        assert provider.provider_name == "Sentinel Hub"
-
-    def test_get_provider_openai(self):
-        """OpenAI provider."""
-        from app.utils.api_key_provider import get_api_key_provider
-
-        provider = get_api_key_provider("openai")
-        assert provider.provider_name == "OpenAI"
-
-    def test_get_provider_unknown(self):
-        """Tanımsız provider KeyError fırlatmalı."""
-        from app.utils.api_key_provider import get_api_key_provider
-
-        with pytest.raises(KeyError, match="Tanımsız"):
-            get_api_key_provider("nonexistent_provider")
-
-    def test_environment_key_provider_not_configured(self):
-        """Environment variable tanımlı değil → False."""
-        from app.utils.api_key_provider import EnvironmentKeyProvider
-
-        provider = EnvironmentKeyProvider(
-            name="Test",
-            env_var="DEFINITELY_NOT_SET_ENV_VAR_XYZ",
-        )
-        assert provider.is_configured() is False
-
-    def test_environment_key_provider_get_key_none(self):
-        """Tanımlı olmayan key → None."""
-        from app.utils.api_key_provider import EnvironmentKeyProvider
-
-        provider = EnvironmentKeyProvider(
-            name="Test",
-            env_var="DEFINITELY_NOT_SET_ENV_VAR_XYZ",
-        )
-        assert provider.get_key() is None
-
-    def test_environment_key_provider_get_key(self):
-        """Environment variable'dan key okuma."""
-        from app.utils.api_key_provider import EnvironmentKeyProvider
-
-        os.environ["TEST_PROVIDER_KEY_SEC"] = "test-key-value-123"
-        provider = EnvironmentKeyProvider(
-            name="Test",
-            env_var="TEST_PROVIDER_KEY_SEC",
-        )
-
-        assert provider.get_key() == "test-key-value-123"
-        assert provider.is_configured() is True
-
-        del os.environ["TEST_PROVIDER_KEY_SEC"]
-
-    def test_key_rotation(self):
-        """Key rotation mekanizması."""
-        from app.utils.api_key_provider import EnvironmentKeyProvider
-
-        os.environ["ROT_KEY_1"] = "key-1"
-        os.environ["ROT_KEY_2"] = "key-2"
-
-        provider = EnvironmentKeyProvider(
-            name="RotationTest",
-            env_var="ROT_KEY_1",
-            rotation_env_vars=["ROT_KEY_2"],
-        )
-
-        assert provider.get_key() == "key-1"
-
-        rotated = provider.rotate_key()
-        assert rotated == "key-2"
-
-        # Tekrar rotate edince ilk key'e dönmeli
-        rotated2 = provider.rotate_key()
-        assert rotated2 == "key-1"
-
-        del os.environ["ROT_KEY_1"]
-        del os.environ["ROT_KEY_2"]
-
-    def test_single_key_rotation_noop(self):
-        """Tek key'de rotation → aynı key döner."""
-        from app.utils.api_key_provider import EnvironmentKeyProvider
-
-        os.environ["SINGLE_ROT_KEY"] = "only-key"
-        provider = EnvironmentKeyProvider(
-            name="SingleRotTest",
-            env_var="SINGLE_ROT_KEY",
-        )
-
-        rotated = provider.rotate_key()
-        assert rotated == "only-key"
-
-        del os.environ["SINGLE_ROT_KEY"]
-
-    def test_register_custom_provider(self):
-        """Özel provider kaydı."""
-        from app.utils.api_key_provider import (
-            EnvironmentKeyProvider,
-            register_provider,
-            get_api_key_provider,
-        )
-
-        custom = EnvironmentKeyProvider(
-            name="Custom",
-            env_var="CUSTOM_KEY_SEC_TEST",
-        )
-        register_provider("custom_sec_test", custom)
-
-        fetched = get_api_key_provider("custom_sec_test")
-        assert fetched.provider_name == "Custom"
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 7. OWASP A01 — Broken Access Control Tests
+# 6. OWASP A01 — Broken Access Control Tests
 # ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -859,7 +723,7 @@ class TestAccessControl:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 8. OWASP A02 — Cryptographic Failures Tests
+# 7. OWASP A02 — Cryptographic Failures Tests
 # ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -939,7 +803,7 @@ class TestCryptography:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 9. OWASP A07 — Brute Force Protection Tests
+# 8. OWASP A07 — Brute Force Protection Tests
 # ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -1071,7 +935,7 @@ class TestBruteForceProtection:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 10. OWASP A05 — Security Misconfiguration Tests
+# 9. OWASP A05 — Security Misconfiguration Tests
 # ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -1129,7 +993,7 @@ class TestSecurityMisconfiguration:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 11. Verification Comment XSS Tests
+# 10. Verification Comment XSS Tests
 # ═══════════════════════════════════════════════════════════════════════════
 
 

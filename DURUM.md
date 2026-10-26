@@ -3,15 +3,16 @@
 > **Ne bu dosya:** sertifika değil **envanter**. Ölçülen gerçek durum; "kapalı" ya da "yok" yazan
 > satır kusur değil, kayıt. Kapanış standardı: `ScryneOS/🎯 100-Command-Center/Kapanis-Standardi.md`
 
-**Ölçüm tarihi:** 2026-09-27
+**Ölçüm tarihi:** 2026-09-27 (bağımlılık ve temizlik: 2026-10-26)
 **Tek cümle:** Üç resmî uydu kaynağını kalibre edilmiş tabana göre karşılaştıran motor uçtan uca
 çalışıyor; referans taramasında 20 tesisin 3'ü işaretlendi, 7 kontrol konumunun hiçbiri.
 
 ## Ne çalışıyor (ölçüldü)
 
-- Backend: 230 test, ruff temiz, `pip-audit` 0 açık (python-jose → PyJWT, Pillow 12, FastAPI 0.141).
-- Frontend: Next 16 / React 19 / MapLibre 6; lint (0 hata), tip kontrolü, üretim derlemesi temiz;
-  üretim bağımlılıklarında `npm audit` 0 açık.
+- Backend: 219 test, ruff temiz, `pip-audit` 0 açık (python-jose → PyJWT, Pillow 13, FastAPI 0.141). 2026-10-26: Pillow
+  12.3.0'da 37 kayıt çıkmıştı → 13.0.0; ölü `api_key_provider` ve onun 11 testi kaldırıldı.
+- Frontend: Next 16.4.3 / React 19 / MapLibre 6; lint (0 hata), tip kontrolü, üretim derlemesi temiz;
+  `npm audit` 0 açık (2026-10-26: next 16.3.6'daki kritik RCE ve sharp/zod/follow-redirects kapandı).
 - Uçtan uca: API + PostGIS + Redis + Celery worker + `next start`. Kayıt, giriş, tarama (girişli),
   bulgu paneli, bulgu sayfası, üst üste karşılaştırma, oy verme, profil.
 - 24 ekran (12 rota × masaüstü/mobil): 0 yatay taşma, 0 konsol hatası.
@@ -33,11 +34,8 @@
 ## Açık kararlar (Scryne)
 
 - Repoda LICENSE dosyası yok (eski README "MIT" diyordu; yeni README lisans iddiası taşımıyor).
-- Kullanılmayan bileşenler: `FeaturedAnomalies`, `LayerControls`, `TimelineChart`, `SearchBar`.
-  Silinsin mi?
-- `proje_plani.txt`, `GhostBuilding_Proje_Plani.docx`, `wrangler.toml`
-  (Cloudflare yapılandırması, kullanılmıyor) repoda duruyor.
-- `app/utils/api_key_provider.py` ölü kod.
+- ~~Kullanılmayan bileşenler, eski plan belgeleri, `wrangler.toml`, `api_key_provider.py`~~: 2026-10-26'da
+  kaldırıldı (git geçmişinde duruyor). `TimelineChart` tarihsel değişim bağlanırsa geçmişten geri alınabilir.
 
 ## Yerel çalıştırma
 
