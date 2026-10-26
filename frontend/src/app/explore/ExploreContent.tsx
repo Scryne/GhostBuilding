@@ -243,6 +243,8 @@ export default function ExploreContent() {
                   </>
                 ) : isLoading ? (
                   "Yükleniyor..."
+                ) : error ? (
+                  "Bulgular alınamadı"
                 ) : (
                   "Anomali bulunamadı"
                 )}
