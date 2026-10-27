@@ -34,9 +34,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Non-root user
+# Non-root user. Çalışma zamanı yalnız `node server.js`: taban imajın npm/npx/corepack'i
+# kullanılmıyor, içindeki paketler (brace-expansion) Trivy'yi kırıyordu.
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+    adduser --system --uid 1001 nextjs && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
