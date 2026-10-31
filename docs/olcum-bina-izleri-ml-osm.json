@@ -1,0 +1,776 @@
+{
+ "Istanbul Kadikoy": {
+  "tur": "taban",
+  "lat": 40.9903,
+  "lng": 29.029,
+  "overture_toplam": 713,
+  "osm": 713,
+  "ml": 322,
+  "sn": 49.5
+ },
+ "Ankara Kizilay": {
+  "tur": "taban",
+  "lat": 39.9208,
+  "lng": 32.8541,
+  "overture_toplam": 157,
+  "osm": 141,
+  "ml": 149,
+  "sn": 37.4
+ },
+ "Izmir Alsancak": {
+  "tur": "taban",
+  "lat": 38.437,
+  "lng": 27.143,
+  "overture_toplam": 577,
+  "osm": 571,
+  "ml": 303,
+  "sn": 37.7
+ },
+ "Konya merkez": {
+  "tur": "taban",
+  "lat": 37.8716,
+  "lng": 32.493,
+  "overture_toplam": 131,
+  "osm": 101,
+  "ml": 133,
+  "sn": 51.8
+ },
+ "Eskisehir": {
+  "tur": "taban",
+  "lat": 39.7767,
+  "lng": 30.5206,
+  "overture_toplam": 511,
+  "osm": 503,
+  "ml": 155,
+  "sn": 44.2
+ },
+ "Trabzon": {
+  "tur": "taban",
+  "lat": 41.0027,
+  "lng": 39.7168,
+  "overture_toplam": 269,
+  "osm": 253,
+  "ml": 184,
+  "sn": 48.2
+ },
+ "Berlin Mitte": {
+  "tur": "referans:kontrol",
+  "lat": 52.52,
+  "lng": 13.405,
+  "overture_toplam": 9,
+  "osm": 9,
+  "ml": 7,
+  "sn": 70.1
+ },
+ "Madrid Centro": {
+  "tur": "taban",
+  "lat": 40.4168,
+  "lng": -3.7038,
+  "overture_toplam": 312,
+  "osm": 311,
+  "ml": 48,
+  "sn": 46.4
+ },
+ "Rome Trastevere": {
+  "tur": "taban",
+  "lat": 41.8894,
+  "lng": 12.47,
+  "overture_toplam": 418,
+  "osm": 416,
+  "ml": 120,
+  "sn": 46.1
+ },
+ "Warsaw": {
+  "tur": "taban",
+  "lat": 52.2297,
+  "lng": 21.0122,
+  "overture_toplam": 55,
+  "osm": 53,
+  "ml": 23,
+  "sn": 72.3
+ },
+ "Lyon": {
+  "tur": "taban",
+  "lat": 45.764,
+  "lng": 4.8357,
+  "overture_toplam": 318,
+  "osm": 317,
+  "ml": 43,
+  "sn": 47.8
+ },
+ "Porto": {
+  "tur": "taban",
+  "lat": 41.1579,
+  "lng": -8.6291,
+  "overture_toplam": 226,
+  "osm": 223,
+  "ml": 40,
+  "sn": 43.6
+ },
+ "Chicago Loop": {
+  "tur": "taban",
+  "lat": 41.8781,
+  "lng": -87.6298,
+  "overture_toplam": 90,
+  "osm": 90,
+  "ml": 20,
+  "sn": 56.4
+ },
+ "Denver": {
+  "tur": "taban",
+  "lat": 39.7392,
+  "lng": -104.9903,
+  "overture_toplam": 29,
+  "osm": 28,
+  "ml": 26,
+  "sn": 44.9
+ },
+ "Toronto": {
+  "tur": "taban",
+  "lat": 43.6532,
+  "lng": -79.3832,
+  "overture_toplam": 25,
+  "osm": 25,
+  "ml": 12,
+  "sn": 57.9
+ },
+ "Mexico City": {
+  "tur": "taban",
+  "lat": 19.4326,
+  "lng": -99.1332,
+  "overture_toplam": 208,
+  "osm": 195,
+  "ml": 44,
+  "sn": 51.3
+ },
+ "Bogota": {
+  "tur": "taban",
+  "lat": 4.711,
+  "lng": -74.0721,
+  "overture_toplam": 1210,
+  "osm": 244,
+  "ml": 182,
+  "sn": 42.8
+ },
+ "Sao Paulo": {
+  "tur": "taban",
+  "lat": -23.5505,
+  "lng": -46.6333,
+  "overture_toplam": 474,
+  "osm": 456,
+  "ml": 48,
+  "sn": 32.4
+ },
+ "Buenos Aires": {
+  "tur": "taban",
+  "lat": -34.6037,
+  "lng": -58.3816,
+  "overture_toplam": 246,
+  "osm": 209,
+  "ml": 10,
+  "sn": 50.5
+ },
+ "Lima": {
+  "tur": "taban",
+  "lat": -12.0464,
+  "lng": -77.0428,
+  "overture_toplam": 446,
+  "osm": 276,
+  "ml": 148,
+  "sn": 45.3
+ },
+ "Nairobi": {
+  "tur": "taban",
+  "lat": -1.2921,
+  "lng": 36.8219,
+  "overture_toplam": 239,
+  "osm": 155,
+  "ml": 80,
+  "sn": 52.9
+ },
+ "Lagos": {
+  "tur": "taban",
+  "lat": 6.5244,
+  "lng": 3.3792,
+  "overture_toplam": 1238,
+  "osm": 1027,
+  "ml": 628,
+  "sn": 62.8
+ },
+ "Cairo Zamalek": {
+  "tur": "taban",
+  "lat": 30.0626,
+  "lng": 31.2197,
+  "overture_toplam": 235,
+  "osm": 89,
+  "ml": 196,
+  "sn": 43.4
+ },
+ "Casablanca": {
+  "tur": "taban",
+  "lat": 33.5731,
+  "lng": -7.5898,
+  "overture_toplam": 153,
+  "osm": 47,
+  "ml": 184,
+  "sn": 43.0
+ },
+ "Johannesburg": {
+  "tur": "taban",
+  "lat": -26.2041,
+  "lng": 28.0473,
+  "overture_toplam": 64,
+  "osm": 53,
+  "ml": 62,
+  "sn": 55.1
+ },
+ "Mumbai Bandra": {
+  "tur": "taban",
+  "lat": 19.0596,
+  "lng": 72.8295,
+  "overture_toplam": 327,
+  "osm": 262,
+  "ml": 298,
+  "sn": 48.5
+ },
+ "Bangkok": {
+  "tur": "taban",
+  "lat": 13.7563,
+  "lng": 100.5018,
+  "overture_toplam": 990,
+  "osm": 805,
+  "ml": 467,
+  "sn": 59.6
+ },
+ "Jakarta": {
+  "tur": "taban",
+  "lat": -6.2088,
+  "lng": 106.8456,
+  "overture_toplam": 1690,
+  "osm": 1582,
+  "ml": 437,
+  "sn": 59.2
+ },
+ "Seoul": {
+  "tur": "taban",
+  "lat": 37.5665,
+  "lng": 126.978,
+  "overture_toplam": 142,
+  "osm": 140,
+  "ml": null,
+  "sn": 47.4
+ },
+ "Osaka": {
+  "tur": "taban",
+  "lat": 34.6937,
+  "lng": 135.5023,
+  "overture_toplam": 133,
+  "osm": 127,
+  "ml": 40,
+  "sn": 55.2
+ },
+ "Melbourne": {
+  "tur": "taban",
+  "lat": -37.8136,
+  "lng": 144.9631,
+  "overture_toplam": 236,
+  "osm": 236,
+  "ml": 15,
+  "sn": 47.8
+ },
+ "Auckland": {
+  "tur": "taban",
+  "lat": -36.8485,
+  "lng": 174.7633,
+  "overture_toplam": 161,
+  "osm": 159,
+  "ml": null,
+  "sn": 54.0
+ },
+ "Iowa farmland": {
+  "tur": "taban",
+  "lat": 42.0308,
+  "lng": -93.6319,
+  "overture_toplam": 5,
+  "osm": 4,
+  "ml": 2,
+  "sn": 60.5
+ },
+ "Anatolia farmland": {
+  "tur": "taban",
+  "lat": 38.9,
+  "lng": 33.5,
+  "overture_toplam": 0,
+  "osm": 0,
+  "ml": 0,
+  "sn": 56.6
+ },
+ "Ukraine farmland": {
+  "tur": "taban",
+  "lat": 49.5,
+  "lng": 32.0,
+  "overture_toplam": 0,
+  "osm": 0,
+  "ml": 0,
+  "sn": 84.3
+ },
+ "Sahara edge": {
+  "tur": "taban",
+  "lat": 31.6295,
+  "lng": -7.9811,
+  "overture_toplam": 1445,
+  "osm": 1098,
+  "ml": 1111,
+  "sn": 76.7
+ },
+ "Norway coast": {
+  "tur": "taban",
+  "lat": 60.3913,
+  "lng": 5.3221,
+  "overture_toplam": 117,
+  "osm": 117,
+  "ml": 46,
+  "sn": 58.5
+ },
+ "Amazon edge": {
+  "tur": "taban",
+  "lat": -3.119,
+  "lng": -60.0217,
+  "overture_toplam": 535,
+  "osm": 101,
+  "ml": 823,
+  "sn": 71.1
+ },
+ "Alps valley": {
+  "tur": "taban",
+  "lat": 46.5197,
+  "lng": 7.98,
+  "overture_toplam": 0,
+  "osm": 0,
+  "ml": 0,
+  "sn": 57.2
+ },
+ "Scottish highlands": {
+  "tur": "taban",
+  "lat": 57.12,
+  "lng": -4.71,
+  "overture_toplam": 4,
+  "osm": 2,
+  "ml": 5,
+  "sn": 58.1
+ },
+ "Paris 11e": {
+  "tur": "taban",
+  "lat": 48.859,
+  "lng": 2.38,
+  "overture_toplam": 240,
+  "osm": 239,
+  "ml": 19,
+  "sn": 66.6
+ },
+ "Lyon Part-Dieu": {
+  "tur": "taban",
+  "lat": 45.7606,
+  "lng": 4.857,
+  "overture_toplam": 35,
+  "osm": 33,
+  "ml": 20,
+  "sn": 67.9
+ },
+ "Marseille": {
+  "tur": "taban",
+  "lat": 43.2965,
+  "lng": 5.3698,
+  "overture_toplam": 329,
+  "osm": 327,
+  "ml": 38,
+  "sn": 64.3
+ },
+ "Toulouse": {
+  "tur": "taban",
+  "lat": 43.6047,
+  "lng": 1.4442,
+  "overture_toplam": 417,
+  "osm": 412,
+  "ml": 39,
+  "sn": 72.3
+ },
+ "Nantes": {
+  "tur": "taban",
+  "lat": 47.2184,
+  "lng": -1.5536,
+  "overture_toplam": 367,
+  "osm": 366,
+  "ml": 47,
+  "sn": 47.8
+ },
+ "Lille": {
+  "tur": "taban",
+  "lat": 50.6292,
+  "lng": 3.0573,
+  "overture_toplam": 536,
+  "osm": 536,
+  "ml": 51,
+  "sn": 54.0
+ },
+ "Strasbourg": {
+  "tur": "taban",
+  "lat": 48.5734,
+  "lng": 7.7521,
+  "overture_toplam": 24,
+  "osm": 24,
+  "ml": 11,
+  "sn": 64.3
+ },
+ "Bordeaux": {
+  "tur": "taban",
+  "lat": 44.8378,
+  "lng": -0.5792,
+  "overture_toplam": 460,
+  "osm": 458,
+  "ml": 44,
+  "sn": 65.3
+ },
+ "Rennes": {
+  "tur": "taban",
+  "lat": 48.1173,
+  "lng": -1.6778,
+  "overture_toplam": 187,
+  "osm": 184,
+  "ml": 82,
+  "sn": 68.3
+ },
+ "Dijon": {
+  "tur": "taban",
+  "lat": 47.322,
+  "lng": 5.0415,
+  "overture_toplam": 265,
+  "osm": 261,
+  "ml": 54,
+  "sn": 68.5
+ },
+ "Clermont-Ferrand": {
+  "tur": "taban",
+  "lat": 45.7772,
+  "lng": 3.087,
+  "overture_toplam": 463,
+  "osm": 458,
+  "ml": 74,
+  "sn": 78.7
+ },
+ "Rouen": {
+  "tur": "taban",
+  "lat": 49.4432,
+  "lng": 1.0999,
+  "overture_toplam": 547,
+  "osm": 547,
+  "ml": 24,
+  "sn": 59.4
+ },
+ "Beauce tarım": {
+  "tur": "taban",
+  "lat": 48.3,
+  "lng": 1.7,
+  "overture_toplam": 0,
+  "osm": 0,
+  "ml": 0,
+  "sn": 62.5
+ },
+ "Champagne bağları": {
+  "tur": "taban",
+  "lat": 49.04,
+  "lng": 3.95,
+  "overture_toplam": 527,
+  "osm": 516,
+  "ml": 188,
+  "sn": 61.3
+ },
+ "Landes ormanı": {
+  "tur": "taban",
+  "lat": 44.15,
+  "lng": -0.9,
+  "overture_toplam": 0,
+  "osm": 0,
+  "ml": 0,
+  "sn": 60.9
+ },
+ "Bretagne kıyısı": {
+  "tur": "taban",
+  "lat": 47.87,
+  "lng": -3.93,
+  "overture_toplam": 30,
+  "osm": 29,
+  "ml": 24,
+  "sn": 50.0
+ },
+ "Alpes vadisi": {
+  "tur": "taban",
+  "lat": 45.9,
+  "lng": 6.12,
+  "overture_toplam": 136,
+  "osm": 136,
+  "ml": 42,
+  "sn": 57.0
+ },
+ "Provence": {
+  "tur": "taban",
+  "lat": 43.95,
+  "lng": 4.8,
+  "overture_toplam": 127,
+  "osm": 109,
+  "ml": 66,
+  "sn": 55.1
+ },
+ "Massif Central": {
+  "tur": "taban",
+  "lat": 45.2,
+  "lng": 2.8,
+  "overture_toplam": 1,
+  "osm": 1,
+  "ml": 0,
+  "sn": 52.1
+ },
+ "Normandiya bocage": {
+  "tur": "taban",
+  "lat": 49.18,
+  "lng": -0.37,
+  "overture_toplam": 129,
+  "osm": 129,
+  "ml": null,
+  "sn": 45.7
+ },
+ "Groom Lake (Area 51), ABD": {
+  "tur": "referans:tesis",
+  "lat": 37.2431,
+  "lng": -115.793,
+  "overture_toplam": 0,
+  "osm": 0,
+  "ml": 0,
+  "sn": 61.0
+ },
+ "Pine Gap, Avustralya": {
+  "tur": "referans:tesis",
+  "lat": -23.799,
+  "lng": 133.737,
+  "overture_toplam": 80,
+  "osm": 55,
+  "ml": 79,
+  "sn": 58.2
+ },
+ "RAF Menwith Hill, Birleşik Krallık": {
+  "tur": "referans:tesis",
+  "lat": 54.0086,
+  "lng": -1.6897,
+  "overture_toplam": 41,
+  "osm": 38,
+  "ml": 39,
+  "sn": 58.9
+ },
+ "Diego Garcia": {
+  "tur": "referans:tesis",
+  "lat": -7.3133,
+  "lng": 72.4111,
+  "overture_toplam": 0,
+  "osm": 0,
+  "ml": 0,
+  "sn": 54.8
+ },
+ "Yongbyon, Kuzey Kore": {
+  "tur": "referans:tesis",
+  "lat": 39.795,
+  "lng": 125.755,
+  "overture_toplam": 19,
+  "osm": 18,
+  "ml": null,
+  "sn": 52.9
+ },
+ "Natanz, İran": {
+  "tur": "referans:tesis",
+  "lat": 33.725,
+  "lng": 51.727,
+  "overture_toplam": 8,
+  "osm": 8,
+  "ml": null,
+  "sn": 57.8
+ },
+ "Dimona, İsrail": {
+  "tur": "referans:tesis",
+  "lat": 31.001,
+  "lng": 35.145,
+  "overture_toplam": 51,
+  "osm": 20,
+  "ml": 91,
+  "sn": 62.5
+ },
+ "Île Longue, Fransa": {
+  "tur": "referans:tesis",
+  "lat": 48.3055,
+  "lng": -4.514,
+  "overture_toplam": 1,
+  "osm": 1,
+  "ml": 0,
+  "sn": 57.2
+ },
+ "Istres-Le Tubé hava üssü, Fransa": {
+  "tur": "referans:tesis",
+  "lat": 43.523,
+  "lng": 4.924,
+  "overture_toplam": 0,
+  "osm": 0,
+  "ml": 0,
+  "sn": 60.7
+ },
+ "Volkel hava üssü, Hollanda": {
+  "tur": "referans:tesis",
+  "lat": 51.6566,
+  "lng": 5.708,
+  "overture_toplam": 1,
+  "osm": 1,
+  "ml": 0,
+  "sn": 69.2
+ },
+ "Sivastopol körfezi": {
+  "tur": "referans:tesis",
+  "lat": 44.6167,
+  "lng": 33.525,
+  "overture_toplam": 52,
+  "osm": 40,
+  "ml": 55,
+  "sn": 50.9
+ },
+ "Brest askeri limanı, Fransa": {
+  "tur": "referans:tesis",
+  "lat": 48.383,
+  "lng": -4.5,
+  "overture_toplam": 371,
+  "osm": 371,
+  "ml": 1,
+  "sn": 71.9
+ },
+ "Cherbourg askeri limanı, Fransa": {
+  "tur": "referans:tesis",
+  "lat": 49.645,
+  "lng": -1.628,
+  "overture_toplam": 160,
+  "osm": 158,
+  "ml": 35,
+  "sn": 48.1
+ },
+ "Taverny hava üssü (BA 921), Fransa": {
+  "tur": "referans:tesis",
+  "lat": 49.027,
+  "lng": 2.217,
+  "overture_toplam": 321,
+  "osm": 318,
+  "ml": 182,
+  "sn": 56.3
+ },
+ "Mont Verdun (BA 942), Fransa": {
+  "tur": "referans:tesis",
+  "lat": 45.863,
+  "lng": 4.769,
+  "overture_toplam": 8,
+  "osm": 6,
+  "ml": 8,
+  "sn": 77.0
+ },
+ "CEA Valduc, Fransa": {
+  "tur": "referans:tesis",
+  "lat": 47.579,
+  "lng": 4.868,
+  "overture_toplam": 15,
+  "osm": 15,
+  "ml": 0,
+  "sn": 93.0
+ },
+ "Marcoule nükleer sahası, Fransa": {
+  "tur": "referans:tesis",
+  "lat": 44.144,
+  "lng": 4.712,
+  "overture_toplam": 25,
+  "osm": 25,
+  "ml": 0,
+  "sn": 94.1
+ },
+ "Saint-Dizier hava üssü (BA 113), Fransa": {
+  "tur": "referans:tesis",
+  "lat": 48.636,
+  "lng": 4.899,
+  "overture_toplam": 4,
+  "osm": 4,
+  "ml": 0,
+  "sn": 95.3
+ },
+ "Avord hava üssü (BA 702), Fransa": {
+  "tur": "referans:tesis",
+  "lat": 47.053,
+  "lng": 2.633,
+  "overture_toplam": 0,
+  "osm": 0,
+  "ml": 0,
+  "sn": 82.3
+ },
+ "Luxeuil hava üssü (BA 116), Fransa": {
+  "tur": "referans:tesis",
+  "lat": 47.787,
+  "lng": 6.364,
+  "overture_toplam": 7,
+  "osm": 7,
+  "ml": 0,
+  "sn": 97.0
+ },
+ "Kadıköy, İstanbul": {
+  "tur": "referans:kontrol",
+  "lat": 40.9903,
+  "lng": 29.029,
+  "overture_toplam": 713,
+  "osm": 713,
+  "ml": 322,
+  "sn": 119.2
+ },
+ "Paris merkez": {
+  "tur": "referans:kontrol",
+  "lat": 48.8566,
+  "lng": 2.3522,
+  "overture_toplam": 92,
+  "osm": 91,
+  "ml": 30,
+  "sn": 64.7
+ },
+ "Iowa tarım alanı": {
+  "tur": "referans:kontrol",
+  "lat": 42.0308,
+  "lng": -93.6319,
+  "overture_toplam": 5,
+  "osm": 4,
+  "ml": 2,
+  "sn": 58.4
+ },
+ "Tours merkez": {
+  "tur": "referans:kontrol",
+  "lat": 47.3941,
+  "lng": 0.6848,
+  "overture_toplam": 470,
+  "osm": 467,
+  "ml": 61,
+  "sn": 66.2
+ },
+ "Reims merkez": {
+  "tur": "referans:kontrol",
+  "lat": 49.2583,
+  "lng": 4.0317,
+  "overture_toplam": 437,
+  "osm": 436,
+  "ml": 61,
+  "sn": 63.5
+ },
+ "Montpellier merkez": {
+  "tur": "referans:kontrol",
+  "lat": 43.6108,
+  "lng": 3.8767,
+  "overture_toplam": 658,
+  "osm": 647,
+  "ml": 107,
+  "sn": 71.8
+ }
+}

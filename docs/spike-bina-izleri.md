@@ -31,3 +31,44 @@ görüntünün sansürünü doğrudan ölçmez.
 
 Deneme betiği: DuckDB, `read_parquet('s3://overturemaps-us-west-2/release/<sürüm>/theme=buildings/type=building/*')`,
 `bbox.xmin/ymin` aralık süzgeci, `sources` listesinde `OpenStreetMap` sayımı.
+
+---
+
+# Deneme 2: Microsoft Global ML Building Footprints (2026-11-01)
+
+**Yöntem.** Overture'ın atladığı birleştirilmemiş ML katmanı doğrudan Microsoft'un
+`dataset-links.csv` dizininden alındı: her konumun z9 quadkey dosyası (sıkıştırılmış GeoJSON,
+dosya başına onlarca MB) indirildi, z16 karo kutusuna düşen izler sayıldı. OSM bina sayısı, Overpass
+o gün kapasite hatası verdiği için Overture'daki `sources.dataset = OpenStreetMap` kayıtlarından
+alındı (Overture OSM binalarını değiştirmeden taşır). 86 konum: 59 taban (sıradan), 7 referans
+kontrol, 20 referans tesis (askeri/nükleer). 5 konumda ML dosyası yok (Kore, İran, Yeni Zelanda,
+bir Normandiya karosu): değerlendirme dışı. Ham veri: `olcum-bina-izleri-ml-osm.json`.
+
+**Kural.** OSM'de en az 4 bina var ve ML payı `ml / (osm + ml) < 0,02` → "görüntüden çıkarılmış iz
+yok" işareti.
+
+| Grup | Değerlendirilebilir | İşaret |
+|---|---:|---:|
+| Taban (sıradan) | 49 | **0** |
+| Referans kontrol | 7 | 0 |
+| Referans tesis | 12 | **5** |
+
+İşaretlenen beşi de Fransa'da: Brest askeri limanı (OSM 371 / ML 1), CEA Valduc (15 / 0), Marcoule
+(25 / 0), Saint-Dizier BA 113 (4 / 0), Luxeuil BA 116 (7 / 0). Aynı ülkedeki sıradan konumlarda ML
+payı normal (Lyon, Strasbourg, Bretagne kıyısı, Montpellier, Paris: %20–40). Fransa dışındaki
+tesislerde (Menwith Hill, Pine Gap, Dimona, Sivastopol) ML izleri var. Tek yönlü Fisher testi
+("OSM'de bina var, ML sıfır" oranı, tesis 8/16 – taban 4/54): p ≈ 0,0004. Eşik 10 binaya
+çıkarılınca tesis isabeti 3/9'a düşüyor, taban yanlış alarmı yine 0/48.
+
+**Yorum.** Sinyal ayırıyor, ama ayırdığı şey büyük ihtimalle Fransız sahalarının Bing
+görüntüsünde de gizlendiği (Microsoft'un modeli o görüntüden bina çıkaramadı). Bu, GhostBuilding'in
+karşılaştırdığı Esri / MapTiler / IGN'den **bağımsız dördüncü bir sağlayıcının** sansür izidir;
+aynı görüntünün sansürünü doğrudan ölçmez. Sınırlar: referans listesini ben seçtim (etiket
+yanlılığı), tesis örneklemi küçük ve Fransa ağırlıklı, Microsoft dosyaları 2022–2023 görüntüsünden
+(güncellik farkı), z9 dosyası konum başına onlarca MB.
+
+**Karar.** Puana bağlanmaz. Tarihsel değişim sinyalinde olduğu gibi önce **kanıt** olarak
+eklenmeli: bulgu kartında "Microsoft ML izleri bu karoda yok (OSM: N bina)" satırı, taban ölçüsüyle
+birlikte. Puana girmesi için Fransa dışından en az 20 tesis ve ülke başına taban gerekir.
+Ürünleştirme maliyeti: z9 dosyasının indirilip önbelleklenmesi (konum başına bir kez, ~10–80 MB),
+karo süzgeci akışla (dosya belleğe alınmadan). Bu iş yol haritasında ayrı bir adım olarak duruyor.
