@@ -1360,3 +1360,92 @@ async def get_anomaly_detail(
         verification_stats=verification_stats,
         time_series=time_series,
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /anomalies/{id}/history — Esri Wayback zaman serisi (kanıt, puan değil)
+# ---------------------------------------------------------------------------
+
+HISTORY_PENDING_TTL = timedelta(minutes=15)
+HISTORY_FAILED_RETRY = timedelta(hours=1)
+
+
+class HistorySnapshot(BaseModel):
+    date: str
+    year: int
+    image_url: str
+
+
+class HistoryChange(BaseModel):
+    date: str
+    date_before: str
+    change_type: str
+    label: str
+    diff_score: float
+    ssim: float
+
+
+class AnomalyHistory(BaseModel):
+    """Bulgunun konumunun yıllar içindeki görüntüleri; tarama sonrası arka planda üretilir."""
+
+    status: str = Field(description="ready | empty | pending | failed")
+    source: Optional[str] = None
+    zoom: Optional[int] = None
+    generated_at: Optional[str] = None
+    snapshots: List[HistorySnapshot] = Field(default_factory=list)
+    changes: List[HistoryChange] = Field(default_factory=list)
+
+
+def _history_due(history: Optional[Dict[str, Any]], now: datetime) -> bool:
+    """Zaman serisi yeniden kuyruğa atılmalı mı (hiç yok, takılmış ya da başarısız)."""
+    if not history:
+        return True
+    status_ = history.get("status")
+    stamp = history.get("queued_at") or history.get("generated_at")
+    try:
+        at = datetime.fromisoformat(stamp) if stamp else None
+    except ValueError:
+        at = None
+    if status_ == "pending":
+        return at is None or now - at > HISTORY_PENDING_TTL
+    if status_ == "failed":
+        return at is None or now - at > HISTORY_FAILED_RETRY
+    return False
+
+
+@router.get(
+    "/{anomaly_id}/history",
+    response_model=AnomalyHistory,
+    summary="Bulgunun tarihsel görüntüleri",
+    description=(
+        "Konumun Esri World Imagery Wayback sürümlerinden, görüntünün değiştiği tarihler ve kareler. "
+        "Puana katılmaz: sıradan şehirler de sık değişir (docs/calibration-history-z16.json). "
+        "Henüz üretilmemişse bir kez kuyruğa atılır ve `pending` döner."
+    ),
+    tags=["anomalies"],
+)
+async def get_anomaly_history(
+    anomaly_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> AnomalyHistory:
+    anomaly = (await db.execute(select(Anomaly).where(Anomaly.id == anomaly_id))).scalar_one_or_none()
+    if anomaly is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Anomali bulunamadı: {anomaly_id}")
+
+    meta = dict(anomaly.meta_data or {})
+    history = meta.get("history")
+    now = datetime.now(timezone.utc)
+
+    if _history_due(history, now):
+        try:
+            from app.tasks.scan_tasks import build_anomaly_history
+
+            build_anomaly_history.delay(str(anomaly.id))
+        except Exception as exc:  # kuyruk erişilemezse sonraki istek yeniden dener
+            logger.warning("Zaman serisi kuyruğa atılamadı (%s): %s", anomaly_id, exc)
+            return AnomalyHistory(status="pending")
+        history = {"status": "pending", "queued_at": now.isoformat()}
+        anomaly.meta_data = {**meta, "history": history}
+        await db.commit()
+
+    return AnomalyHistory(**{k: v for k, v in history.items() if k in AnomalyHistory.model_fields})

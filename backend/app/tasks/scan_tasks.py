@@ -270,6 +270,13 @@ def scan_coordinate(
                 f"(gelen: {result['providers'] or 'yok'})"
             )
 
+        # Kaydedilen bulgulara kanit olarak Wayback zaman serisi; tarama sonucunu bekletmez.
+        for anomaly_id in run.get("history_pending_ids", []):
+            try:
+                build_anomaly_history.delay(anomaly_id)
+            except Exception as exc:  # kuyruk yoksa bulgu sayfasi istegi yeniden dener
+                logger.warning("Zaman serisi kuyruga atilamadi (%s): %s", anomaly_id, exc)
+
         _update_progress(task_id, 90, "Analiz tamamlandı")
         result["completed_at"] = datetime.now(timezone.utc).isoformat()
 
@@ -312,6 +319,30 @@ def scan_coordinate(
 
         # Retry
         raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1))
+
+
+# ---------------------------------------------------------------------------
+# Task: build_anomaly_history
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(
+    name="app.tasks.scan_tasks.build_anomaly_history",
+    max_retries=2,
+    default_retry_delay=120,
+    acks_late=True,
+)
+def build_anomaly_history(anomaly_id: str) -> Dict[str, Any]:
+    """Bulgunun konumu icin Esri Wayback zaman serisini uretip meta_data["history"]'ye yazar.
+
+    Puan degil kanit: tarihsel skor ayirt edici olmadigi icin (history_service) bulgu
+    sayfasinda yillar icindeki goruntu ve degisim tarihleri olarak gosterilir.
+    """
+    from app.services.history_service import store_anomaly_history
+
+    history = _run_async(store_anomaly_history(anomaly_id))
+    return {"anomaly_id": anomaly_id, "status": history.get("status"),
+            "snapshots": len(history.get("snapshots", []))}
 
 
 # ---------------------------------------------------------------------------

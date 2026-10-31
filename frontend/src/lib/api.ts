@@ -8,6 +8,7 @@ import type {
   PaginatedResponse,
   AnomalyListItem,
   AnomalyDetail,
+  AnomalyHistory,
   ScanRequest,
   ScanResponse,
   ScanStatusResponse,
@@ -278,6 +279,10 @@ export const anomalyApi = {
   /** GET /anomalies/:id — Anomali detayı */
   getById: (id: string) =>
     api.get<AnomalyDetail>(`/anomalies/${id}`).then((r) => r.data),
+
+  /** GET /anomalies/:id/history — Esri Wayback zaman serisi (yoksa kuyruğa atılır) */
+  getHistory: (id: string) =>
+    api.get<AnomalyHistory>(`/anomalies/${id}/history`).then((r) => r.data),
 
   /** GET /anomalies/stats — İstatistikler */
   getStats: () =>

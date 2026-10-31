@@ -1,0 +1,1891 @@
+{
+ "tarih": "2026-10-31T14:06:08+00:00",
+ "zoom": 16,
+ "olculen_taban": 60,
+ "taban_toplam": 60,
+ "ham_skor": {
+  "median": 95.43,
+  "p90": 100.0,
+  "p99": 100.0,
+  "max": 100.0
+ },
+ "taban_olay_sayilari": {
+  "SIGNIFICANT_CHANGE": 224,
+  "STRUCTURE_APPEARED": 43,
+  "STRUCTURE_DISAPPEARED": 57,
+  "NO_CHANGE": 66,
+  "RESOLUTION_CHANGED": 5,
+  "BLUR_REMOVED": 1,
+  "MINOR_CHANGE": 6
+ },
+ "taban": [
+  {
+   "konum": "Istanbul Kadikoy",
+   "lat": 40.9903,
+   "lng": 29.029,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2021,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 4,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Ankara Kizilay",
+   "lat": 39.9208,
+   "lng": 32.8541,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 55.21,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 6,
+    "NO_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Izmir Alsancak",
+   "lat": 38.437,
+   "lng": 27.143,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2019,
+    2020,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 5,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Konya merkez",
+   "lat": 37.8716,
+   "lng": 32.493,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "SIGNIFICANT_CHANGE": 2,
+    "STRUCTURE_APPEARED": 2
+   }
+  },
+  {
+   "konum": "Eskisehir",
+   "lat": 39.7767,
+   "lng": 30.5206,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 71.46,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 5,
+    "STRUCTURE_APPEARED": 1,
+    "NO_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Trabzon",
+   "lat": 41.0027,
+   "lng": 39.7168,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "SIGNIFICANT_CHANGE": 4,
+    "NO_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Berlin Mitte",
+   "lat": 52.52,
+   "lng": 13.405,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 6,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Madrid Centro",
+   "lat": 40.4168,
+   "lng": -3.7038,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 4,
+    "STRUCTURE_APPEARED": 2,
+    "STRUCTURE_DISAPPEARED": 1,
+    "NO_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Rome Trastevere",
+   "lat": 41.8894,
+   "lng": 12.47,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021,
+    2023,
+    2025
+   ],
+   "ham_skor": 82.08,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 5,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Warsaw",
+   "lat": 52.2297,
+   "lng": 21.0122,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 82.16,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 6,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Lyon",
+   "lat": 45.764,
+   "lng": 4.8357,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
+   "ham_skor": 72.6,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 5,
+    "NO_CHANGE": 1,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Porto",
+   "lat": 41.1579,
+   "lng": -8.6291,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2021,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 4,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Chicago Loop",
+   "lat": 41.8781,
+   "lng": -87.6298,
+   "snapshot": 6,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2023,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_APPEARED": 2,
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Denver",
+   "lat": 39.7392,
+   "lng": -104.9903,
+   "snapshot": 6,
+   "yillar": [
+    2016,
+    2018,
+    2019,
+    2020,
+    2021,
+    2023
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_APPEARED": 3,
+    "SIGNIFICANT_CHANGE": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Toronto",
+   "lat": 43.6532,
+   "lng": -79.3832,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 4,
+    "STRUCTURE_APPEARED": 1,
+    "RESOLUTION_CHANGED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Mexico City",
+   "lat": 19.4326,
+   "lng": -99.1332,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 47.93,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 6
+   }
+  },
+  {
+   "konum": "Bogota",
+   "lat": 4.711,
+   "lng": -74.0721,
+   "snapshot": 6,
+   "yillar": [
+    2016,
+    2017,
+    2019,
+    2020,
+    2021,
+    2025
+   ],
+   "ham_skor": 67.28,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 3,
+    "RESOLUTION_CHANGED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Sao Paulo",
+   "lat": -23.5505,
+   "lng": -46.6333,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "SIGNIFICANT_CHANGE": 4,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Buenos Aires",
+   "lat": -34.6037,
+   "lng": -58.3816,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 3,
+    "SIGNIFICANT_CHANGE": 3,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Lima",
+   "lat": -12.0464,
+   "lng": -77.0428,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2019,
+    2020,
+    2021,
+    2023,
+    2025
+   ],
+   "ham_skor": 43.22,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 5,
+    "RESOLUTION_CHANGED": 1
+   }
+  },
+  {
+   "konum": "Nairobi",
+   "lat": -1.2921,
+   "lng": 36.8219,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 4,
+    "STRUCTURE_APPEARED": 2,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Lagos",
+   "lat": 6.5244,
+   "lng": 3.3792,
+   "snapshot": 6,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2022,
+    2025
+   ],
+   "ham_skor": 87.46,
+   "olaylar": {
+    "BLUR_REMOVED": 1,
+    "SIGNIFICANT_CHANGE": 2,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Cairo Zamalek",
+   "lat": 30.0626,
+   "lng": 31.2197,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 96.88,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 6
+   }
+  },
+  {
+   "konum": "Casablanca",
+   "lat": 33.5731,
+   "lng": -7.5898,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 5,
+    "NO_CHANGE": 1,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Johannesburg",
+   "lat": -26.2041,
+   "lng": 28.0473,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 5,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Mumbai Bandra",
+   "lat": 19.0596,
+   "lng": 72.8295,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2022,
+    2023,
+    2025,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_APPEARED": 1,
+    "SIGNIFICANT_CHANGE": 4,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Bangkok",
+   "lat": 13.7563,
+   "lng": 100.5018,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2019,
+    2021,
+    2023,
+    2025,
+    2026
+   ],
+   "ham_skor": 43.65,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 6
+   }
+  },
+  {
+   "konum": "Jakarta",
+   "lat": -6.2088,
+   "lng": 106.8456,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2021,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 61.5,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 5
+   }
+  },
+  {
+   "konum": "Seoul",
+   "lat": 37.5665,
+   "lng": 126.978,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2025,
+    2026
+   ],
+   "ham_skor": 66.1,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 8
+   }
+  },
+  {
+   "konum": "Osaka",
+   "lat": 34.6937,
+   "lng": 135.5023,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 95.13,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 6,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Melbourne",
+   "lat": -37.8136,
+   "lng": 144.9631,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021,
+    2023,
+    2025
+   ],
+   "ham_skor": 78.97,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "NO_CHANGE": 1,
+    "SIGNIFICANT_CHANGE": 4
+   }
+  },
+  {
+   "konum": "Auckland",
+   "lat": -36.8485,
+   "lng": 174.7633,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2019,
+    2020,
+    2021,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 95.73,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 6
+   }
+  },
+  {
+   "konum": "Iowa farmland",
+   "lat": 42.0308,
+   "lng": -93.6319,
+   "snapshot": 5,
+   "yillar": [
+    2016,
+    2018,
+    2019,
+    2021,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 1,
+    "STRUCTURE_APPEARED": 2,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Anatolia farmland",
+   "lat": 38.9,
+   "lng": 33.5,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_APPEARED": 3,
+    "STRUCTURE_DISAPPEARED": 3,
+    "NO_CHANGE": 1,
+    "SIGNIFICANT_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Ukraine farmland",
+   "lat": 49.5,
+   "lng": 32.0,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 2.92,
+   "olaylar": {
+    "RESOLUTION_CHANGED": 1,
+    "NO_CHANGE": 7
+   }
+  },
+  {
+   "konum": "Sahara edge",
+   "lat": 31.6295,
+   "lng": -7.9811,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 3,
+    "STRUCTURE_DISAPPEARED": 2,
+    "STRUCTURE_APPEARED": 2
+   }
+  },
+  {
+   "konum": "Norway coast",
+   "lat": 60.3913,
+   "lng": 5.3221,
+   "snapshot": 5,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "SIGNIFICANT_CHANGE": 1,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Amazon edge",
+   "lat": -3.119,
+   "lng": -60.0217,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 5,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Alps valley",
+   "lat": 46.5197,
+   "lng": 7.98,
+   "snapshot": 6,
+   "yillar": [
+    2016,
+    2020,
+    2021,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 0.0,
+   "olaylar": {
+    "NO_CHANGE": 5
+   }
+  },
+  {
+   "konum": "Scottish highlands",
+   "lat": 57.12,
+   "lng": -4.71,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2026
+   ],
+   "ham_skor": 2.4,
+   "olaylar": {
+    "MINOR_CHANGE": 3,
+    "NO_CHANGE": 3,
+    "SIGNIFICANT_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Paris 11e",
+   "lat": 48.859,
+   "lng": 2.38,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "NO_CHANGE": 1,
+    "SIGNIFICANT_CHANGE": 4
+   }
+  },
+  {
+   "konum": "Lyon Part-Dieu",
+   "lat": 45.7606,
+   "lng": 4.857,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 4,
+    "NO_CHANGE": 1,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Marseille",
+   "lat": 43.2965,
+   "lng": 5.3698,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2019,
+    2020,
+    2021,
+    2023,
+    2025,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "SIGNIFICANT_CHANGE": 4,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Toulouse",
+   "lat": 43.6047,
+   "lng": 1.4442,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 85.66,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "NO_CHANGE": 1,
+    "SIGNIFICANT_CHANGE": 5
+   }
+  },
+  {
+   "konum": "Nantes",
+   "lat": 47.2184,
+   "lng": -1.5536,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "SIGNIFICANT_CHANGE": 5,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Lille",
+   "lat": 50.6292,
+   "lng": 3.0573,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2021,
+    2023,
+    2025,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 3,
+    "STRUCTURE_APPEARED": 2,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Strasbourg",
+   "lat": 48.5734,
+   "lng": 7.7521,
+   "snapshot": 5,
+   "yillar": [
+    2016,
+    2020,
+    2021,
+    2023,
+    2026
+   ],
+   "ham_skor": 66.22,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 3
+   }
+  },
+  {
+   "konum": "Bordeaux",
+   "lat": 44.8378,
+   "lng": -0.5792,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 93.1,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 6,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Rennes",
+   "lat": 48.1173,
+   "lng": -1.6778,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 4,
+    "NO_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Dijon",
+   "lat": 47.322,
+   "lng": 5.0415,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 30.34,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 4,
+    "NO_CHANGE": 3
+   }
+  },
+  {
+   "konum": "Clermont-Ferrand",
+   "lat": 45.7772,
+   "lng": 3.087,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 33.85,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 5,
+    "NO_CHANGE": 3
+   }
+  },
+  {
+   "konum": "Rouen",
+   "lat": 49.4432,
+   "lng": 1.0999,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 68.49,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 3,
+    "NO_CHANGE": 3
+   }
+  },
+  {
+   "konum": "Beauce tarım",
+   "lat": 48.3,
+   "lng": 1.7,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+   ],
+   "ham_skor": 83.43,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "NO_CHANGE": 3,
+    "STRUCTURE_APPEARED": 1,
+    "SIGNIFICANT_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Champagne bağları",
+   "lat": 49.04,
+   "lng": 3.95,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 18.53,
+   "olaylar": {
+    "NO_CHANGE": 5,
+    "SIGNIFICANT_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Landes ormanı",
+   "lat": 44.15,
+   "lng": -0.9,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 8.51,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 2,
+    "NO_CHANGE": 5,
+    "MINOR_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Bretagne kıyısı",
+   "lat": 47.87,
+   "lng": -3.93,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 59.47,
+   "olaylar": {
+    "MINOR_CHANGE": 2,
+    "SIGNIFICANT_CHANGE": 2,
+    "NO_CHANGE": 2,
+    "STRUCTURE_DISAPPEARED": 1,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Alpes vadisi",
+   "lat": 45.9,
+   "lng": 6.12,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 31.82,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 4,
+    "NO_CHANGE": 3
+   }
+  },
+  {
+   "konum": "Provence",
+   "lat": 43.95,
+   "lng": 4.8,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 3,
+    "STRUCTURE_DISAPPEARED": 2,
+    "STRUCTURE_APPEARED": 1,
+    "NO_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Massif Central",
+   "lat": 45.2,
+   "lng": 2.8,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 42.68,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "RESOLUTION_CHANGED": 1,
+    "NO_CHANGE": 6
+   }
+  },
+  {
+   "konum": "Normandiya bocage",
+   "lat": 49.18,
+   "lng": -0.37,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 55.76,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 3,
+    "NO_CHANGE": 4
+   }
+  }
+ ],
+ "referans": [
+  {
+   "konum": "Groom Lake (Area 51), ABD",
+   "tur": "tesis",
+   "lat": 37.2431,
+   "lng": -115.793,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+   ],
+   "ham_skor": 3.08,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 1,
+    "MINOR_CHANGE": 1,
+    "NO_CHANGE": 5
+   }
+  },
+  {
+   "konum": "Pine Gap, Avustralya",
+   "tur": "tesis",
+   "lat": -23.799,
+   "lng": 133.737,
+   "snapshot": 6,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2023,
+    2025
+   ],
+   "ham_skor": 40.91,
+   "olaylar": {
+    "MINOR_CHANGE": 1,
+    "STRUCTURE_APPEARED": 1,
+    "SIGNIFICANT_CHANGE": 3
+   }
+  },
+  {
+   "konum": "RAF Menwith Hill, Birleşik Krallık",
+   "tur": "tesis",
+   "lat": 54.0086,
+   "lng": -1.6897,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 25.22,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 5,
+    "NO_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Diego Garcia",
+   "tur": "tesis",
+   "lat": -7.3133,
+   "lng": 72.4111,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "RESOLUTION_CHANGED": 1,
+    "STRUCTURE_APPEARED": 2,
+    "STRUCTURE_DISAPPEARED": 1,
+    "NO_CHANGE": 4
+   }
+  },
+  {
+   "konum": "Yongbyon, Kuzey Kore",
+   "tur": "tesis",
+   "lat": 39.795,
+   "lng": 125.755,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 71.5,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 5,
+    "RESOLUTION_CHANGED": 1,
+    "MINOR_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Natanz, İran",
+   "tur": "tesis",
+   "lat": 33.725,
+   "lng": 51.727,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2021,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 53.95,
+   "olaylar": {
+    "MINOR_CHANGE": 1,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 2,
+    "NO_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Dimona, İsrail",
+   "tur": "tesis",
+   "lat": 31.001,
+   "lng": 35.145,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2020,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 42.64,
+   "olaylar": {
+    "NO_CHANGE": 4,
+    "STRUCTURE_APPEARED": 1,
+    "SIGNIFICANT_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Île Longue, Fransa",
+   "tur": "tesis",
+   "lat": 48.3055,
+   "lng": -4.514,
+   "snapshot": 5,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020
+   ],
+   "ham_skor": 0.0,
+   "olaylar": {
+    "NO_CHANGE": 2,
+    "MINOR_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Istres-Le Tubé hava üssü, Fransa",
+   "tur": "tesis",
+   "lat": 43.523,
+   "lng": 4.924,
+   "snapshot": 3,
+   "yillar": [
+    2016,
+    2018,
+    2020
+   ],
+   "ham_skor": 8.15,
+   "olaylar": {
+    "NO_CHANGE": 1,
+    "SIGNIFICANT_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Volkel hava üssü, Hollanda",
+   "tur": "tesis",
+   "lat": 51.6566,
+   "lng": 5.708,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2019,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 3,
+    "NO_CHANGE": 1,
+    "STRUCTURE_APPEARED": 2,
+    "RESOLUTION_CHANGED": 2
+   }
+  },
+  {
+   "konum": "Sivastopol körfezi",
+   "tur": "tesis",
+   "lat": 44.6167,
+   "lng": 33.525,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2019,
+    2020,
+    2021,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 3,
+    "STRUCTURE_APPEARED": 1,
+    "SIGNIFICANT_CHANGE": 3
+   }
+  },
+  {
+   "konum": "Brest askeri limanı, Fransa",
+   "tur": "tesis",
+   "lat": 48.383,
+   "lng": -4.5,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2023,
+    2025
+   ],
+   "ham_skor": 86.61,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 2,
+    "NO_CHANGE": 1,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1,
+    "MINOR_CHANGE": 1
+   }
+  },
+  {
+   "konum": "Cherbourg askeri limanı, Fransa",
+   "tur": "tesis",
+   "lat": 49.645,
+   "lng": -1.628,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 24.77,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 4,
+    "MINOR_CHANGE": 1,
+    "NO_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Taverny hava üssü (BA 921), Fransa",
+   "tur": "tesis",
+   "lat": 49.027,
+   "lng": 2.217,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "NO_CHANGE": 1,
+    "SIGNIFICANT_CHANGE": 4
+   }
+  },
+  {
+   "konum": "Mont Verdun (BA 942), Fransa",
+   "tur": "tesis",
+   "lat": 45.863,
+   "lng": 4.769,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
+   "ham_skor": 61.98,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 2,
+    "NO_CHANGE": 2,
+    "STRUCTURE_APPEARED": 2,
+    "MINOR_CHANGE": 1
+   }
+  },
+  {
+   "konum": "CEA Valduc, Fransa",
+   "tur": "tesis",
+   "lat": 47.579,
+   "lng": 4.868,
+   "snapshot": 3,
+   "yillar": [
+    2016,
+    2018,
+    2020
+   ],
+   "ham_skor": 9.36,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Marcoule nükleer sahası, Fransa",
+   "tur": "tesis",
+   "lat": 44.144,
+   "lng": 4.712,
+   "snapshot": 3,
+   "yillar": [
+    2016,
+    2018,
+    2020
+   ],
+   "ham_skor": 19.32,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Saint-Dizier hava üssü (BA 113), Fransa",
+   "tur": "tesis",
+   "lat": 48.636,
+   "lng": 4.899,
+   "snapshot": 3,
+   "yillar": [
+    2016,
+    2018,
+    2020
+   ],
+   "ham_skor": 5.18,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Avord hava üssü (BA 702), Fransa",
+   "tur": "tesis",
+   "lat": 47.053,
+   "lng": 2.633,
+   "snapshot": 3,
+   "yillar": [
+    2016,
+    2018,
+    2020
+   ],
+   "ham_skor": 0.0,
+   "olaylar": {
+    "NO_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Luxeuil hava üssü (BA 116), Fransa",
+   "tur": "tesis",
+   "lat": 47.787,
+   "lng": 6.364,
+   "snapshot": 3,
+   "yillar": [
+    2016,
+    2018,
+    2020
+   ],
+   "ham_skor": 12.42,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Kadıköy, İstanbul",
+   "tur": "kontrol",
+   "lat": 40.9903,
+   "lng": 29.029,
+   "snapshot": 7,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2021,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 4,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Berlin Mitte",
+   "tur": "kontrol",
+   "lat": 52.52,
+   "lng": 13.405,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 6,
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Paris merkez",
+   "tur": "kontrol",
+   "lat": 48.8566,
+   "lng": 2.3522,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2022,
+    2023,
+    2025
+   ],
+   "ham_skor": 99.15,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "NO_CHANGE": 1,
+    "SIGNIFICANT_CHANGE": 4
+   }
+  },
+  {
+   "konum": "Iowa tarım alanı",
+   "tur": "kontrol",
+   "lat": 42.0308,
+   "lng": -93.6319,
+   "snapshot": 5,
+   "yillar": [
+    2016,
+    2018,
+    2019,
+    2021,
+    2026
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 1,
+    "STRUCTURE_APPEARED": 2,
+    "STRUCTURE_DISAPPEARED": 1
+   }
+  },
+  {
+   "konum": "Tours merkez",
+   "tur": "kontrol",
+   "lat": 47.3941,
+   "lng": 0.6848,
+   "snapshot": 5,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2020,
+    2021
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_DISAPPEARED": 2,
+    "SIGNIFICANT_CHANGE": 1,
+    "STRUCTURE_APPEARED": 1
+   }
+  },
+  {
+   "konum": "Reims merkez",
+   "tur": "kontrol",
+   "lat": 49.2583,
+   "lng": 4.0317,
+   "snapshot": 8,
+   "yillar": [
+    2016,
+    2018,
+    2020,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+   ],
+   "ham_skor": 36.52,
+   "olaylar": {
+    "SIGNIFICANT_CHANGE": 5,
+    "NO_CHANGE": 2
+   }
+  },
+  {
+   "konum": "Montpellier merkez",
+   "tur": "kontrol",
+   "lat": 43.6108,
+   "lng": 3.8767,
+   "snapshot": 9,
+   "yillar": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2024,
+    2025
+   ],
+   "ham_skor": 100.0,
+   "olaylar": {
+    "STRUCTURE_APPEARED": 1,
+    "STRUCTURE_DISAPPEARED": 1,
+    "SIGNIFICANT_CHANGE": 6
+   }
+  }
+ ]
+}

@@ -131,6 +131,23 @@ export interface TimeSeriesEntry {
   event: string | null;
 }
 
+/** Esri Wayback zaman serisi: kanıt, puan değil (sıradan şehirler de sık değişir). */
+export interface AnomalyHistory {
+  status: "ready" | "empty" | "pending" | "failed";
+  source: string | null;
+  zoom: number | null;
+  generated_at: string | null;
+  snapshots: { date: string; year: number; image_url: string }[];
+  changes: {
+    date: string;
+    date_before: string;
+    change_type: string;
+    label: string;
+    diff_score: number;
+    ssim: number;
+  }[];
+}
+
 export interface AnomalyDetail {
   id: string;
   lat: number;

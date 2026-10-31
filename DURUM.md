@@ -3,13 +3,13 @@
 > **Ne bu dosya:** sertifika değil **envanter**. Ölçülen gerçek durum; "kapalı" ya da "yok" yazan
 > satır kusur değil, kayıt. Kapanış standardı: `ScryneOS/🎯 100-Command-Center/Kapanis-Standardi.md`
 
-**Ölçüm tarihi:** 2026-09-27 (bağımlılık ve temizlik: 2026-10-26)
+**Ölçüm tarihi:** 2026-09-27 (bağımlılık ve temizlik: 2026-10-26; tarihsel kanıt: 2026-10-31)
 **Tek cümle:** Üç resmî uydu kaynağını kalibre edilmiş tabana göre karşılaştıran motor uçtan uca
 çalışıyor; referans taramasında 20 tesisin 3'ü işaretlendi, 7 kontrol konumunun hiçbiri.
 
 ## Ne çalışıyor (ölçüldü)
 
-- Backend: 219 test, ruff temiz, `pip-audit` 0 açık (python-jose → PyJWT, Pillow 13, FastAPI 0.141). 2026-10-26: Pillow
+- Backend: 227 test (2026-10-31), ruff temiz, `pip-audit` 0 açık (python-jose → PyJWT, Pillow 13, FastAPI 0.141). 2026-10-26: Pillow
   12.3.0'da 37 kayıt çıkmıştı → 13.0.0; ölü `api_key_provider` ve onun 11 testi kaldırıldı.
 - Frontend: Next 16.4.3 / React 19 / MapLibre 6; lint (0 hata), tip kontrolü, üretim derlemesi temiz;
   `npm audit` 0 açık (2026-10-26: next 16.3.6'daki kritik RCE ve sharp/zod/follow-redirects kapandı).
@@ -27,13 +27,15 @@
 
 - **Bina dedektörü** (hayalet bina / gizli yapı): hava görüntüsü için eğitilmiş ağırlık yok, kapalı.
   `requirements-detector.txt` + `BUILDING_DETECTOR_WEIGHTS` ile açılır.
-- **Tarihsel değişim:** `WaybackFetcher` + `TimeSeriesAnalyzer` yazılı, tarama akışına bağlı değil.
+- **Tarihsel değişim puanı:** ölçüldü ve ayırt edici çıkmadı (sıradan konum medyanı 95/100, tesisler daha
+  düşük); puana katılmaz. Zaman serisi 2026-10-31'den beri bulguya **kanıt** olarak eklenir (bulgu sayfasında
+  "Yıllar içinde" şeridi). Ayrıntı: `docs/algorithms.md` §5.
 - **Staging dağıtımı:** iş akışı yalnız elle tetiklenir; sunucu yok.
 - Testler SQLite ile koşar; PostGIS'e özgü sorgular yalnız uçtan uca çalıştırmada doğrulandı.
 
 ## Açık kararlar (Scryne)
 
-- Repoda LICENSE dosyası yok (eski README "MIT" diyordu; yeni README lisans iddiası taşımıyor).
+- ~~Repoda LICENSE dosyası yok~~ → 2026-10-31: MIT (eski README'nin iddiasıyla aynı).
 - ~~Kullanılmayan bileşenler, eski plan belgeleri, `wrangler.toml`, `api_key_provider.py`~~: 2026-10-26'da
   kaldırıldı (git geçmişinde duruyor). `TimelineChart` tarihsel değişim bağlanırsa geçmişten geri alınabilir.
 

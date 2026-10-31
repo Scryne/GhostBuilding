@@ -168,3 +168,5 @@ npm run lint && npm run typecheck && npm run build
 
 Araştırma, gazetecilik ve eğitim amaçlıdır. Uydu görüntüsündeki bir fark tek başına bir tesisin
 varlığını ya da niteliğini kanıtlamaz; bulgular insan doğrulaması içindir.
+
+Lisans: [MIT](LICENSE).

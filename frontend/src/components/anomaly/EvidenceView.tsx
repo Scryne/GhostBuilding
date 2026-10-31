@@ -28,6 +28,7 @@ import {
 import { AnomalyCategory, type AnomalyDetail, type VerificationVote } from "@/lib/types";
 import ProviderComparison from "./ProviderComparison";
 import VerificationPanel from "./VerificationPanel";
+import HistoryStrip from "./HistoryStrip";
 
 const PROVIDER_ORDER = ["esri", "maptiler", "ign"];
 
@@ -227,6 +228,8 @@ export default function EvidenceView({ detail, variant = "panel", onUpdated }: E
       </section>
     ) : null;
 
+  const history = <HistoryStrip anomalyId={detail.id} compact={!isPage} />;
+
   const verification = (
     <section>
       <VerificationPanel
@@ -262,6 +265,7 @@ export default function EvidenceView({ detail, variant = "panel", onUpdated }: E
           {header}
           {evidence}
           {compare}
+          {history}
         </div>
         <div className="space-y-8 min-w-0">
           {why}
@@ -278,6 +282,7 @@ export default function EvidenceView({ detail, variant = "panel", onUpdated }: E
       {evidence}
       {why}
       {compare}
+      {history}
       {verification}
       {record}
     </div>
@@ -360,7 +365,7 @@ function rawLine(measured?: string, p90?: string): string | undefined {
 
 function inactiveLabel(reason: string): string {
   if (reason.startsWith("geospatial")) return "OSM ↔ görüntü karşılaştırması · kapalı";
-  if (reason.startsWith("historical")) return "Tarihsel değişim · kapalı";
+  if (reason.startsWith("historical")) return "Tarihsel değişim · puana katılmaz";
   return reason.split(":")[0];
 }
 
@@ -368,6 +373,6 @@ function inactiveReason(reason: string): string {
   if (reason.startsWith("geospatial"))
     return "Hava görüntüsünde bina tanıyan bir model tanımlı değil; genel amaçlı model yukarıdan bina tanımaz, sonuç uydurma olurdu.";
   if (reason.startsWith("historical"))
-    return "Esri Wayback sürümlerini karşılaştıran analizci hazır, ama henüz taramaya bağlı değil; puana katılmıyor.";
+    return "Ölçüldü: sıradan şehirler de yıllar içinde sürekli değişiyor (60 konumun medyanı 95/100), bu yüzden ayırt etmiyor. Arşiv görüntüleri bu bulgunun kanıtı olarak ayrıca gösteriliyor.";
   return reason;
 }

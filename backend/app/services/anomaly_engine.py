@@ -64,7 +64,9 @@ DEDUP_RADIUS_M: float = 50.0
 
 # Skora katkı veremeyen sinyaller (neden) — adayın meta verisinde görünür.
 INACTIVE_GEOSPATIAL = "geospatial_mismatch: bina dedektörü tanımlı değil (BUILDING_DETECTOR_WEIGHTS)"
-INACTIVE_HISTORICAL = "historical_change: tarama akışına bağlı değil (Wayback analizcisi hazır, çağrılmıyor)"
+# Ölçüldü (docs/calibration-history-z16.json): sıradan konumların ham tarihsel skoru medyan 95, p90 100;
+# Esri şehirleri sık yeniler. Ayırt etmeyen sinyal puana katılmaz; zaman serisi bulguya kanıt olarak eklenir.
+INACTIVE_HISTORICAL = "historical_change: ayırt edici değil (sıradan konum medyanı 95/100), kanıt olarak gösterilir"
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +292,7 @@ class AnomalyEngine:
         import time
 
         start_time = time.monotonic()
+        self.saved_ids: List[str] = []
 
         logger.info(
             "Anomali analizi baslatiliyor: (%.4f, %.4f) zoom=%d, "
@@ -379,6 +382,8 @@ class AnomalyEngine:
             ),
             "candidate_count": len(candidates),
             "saved_count": saved_count,
+            # Zaman serisi henuz uretilmemis bulgular (tarama gorevi kuyruga atar).
+            "history_pending_ids": list(self.saved_ids),
             "skipped_count": skipped,
             "score_breakdown": score_breakdown.to_dict(),
             "duration_ms": round(elapsed_ms, 1),
@@ -759,7 +764,8 @@ class AnomalyEngine:
             )
 
         # --- Historical change score ---
-        # Zaman serisi (Esri Wayback) ayri bir uctan sunulur; skora henuz bagli degil.
+        # Zaman serisi (Esri Wayback) bulgu kaydedildikten sonra kanit olarak uretilir
+        # (history_service); skoru ayirt edici olmadigi icin puana girmez.
         breakdown.historical_change_score = 0.0
         if not settings.BUILDING_DETECTOR_WEIGHTS:
             breakdown.inactive_signals.append(INACTIVE_GEOSPATIAL)
@@ -1080,6 +1086,7 @@ class AnomalyEngine:
         from app.models.anomaly_image import AnomalyImage
 
         saved = 0
+        self.saved_ids = []
 
         try:
             async with AsyncSessionLocal() as session:
@@ -1089,6 +1096,8 @@ class AnomalyEngine:
                         if existing is not None:
                             await self._refresh_existing(session, existing, candidate, zoom)
                             saved += 1
+                            if not (existing.meta_data or {}).get("history"):
+                                self.saved_ids.append(str(existing.id))
                             continue
 
                         # Anomaly kaydı olustur
@@ -1143,6 +1152,7 @@ class AnomalyEngine:
                                 )
 
                         saved += 1
+                        self.saved_ids.append(str(anomaly_id))
                         logger.info(
                             "Anomali kaydedildi: %s @ (%.4f, %.4f) "
                             "score=%.1f",

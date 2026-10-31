@@ -64,5 +64,21 @@ Eşiği geçen sonuç konum başına tek kayıt olarak saklanır; yeniden tarama
 ## 5. Tarihsel değişim
 
 `WaybackFetcher` Esri Wayback sürüm listesinden aynı karonun zaman serisini çeker, aynı görüntüyü
-döndüren sürümleri (içerik özeti) eler. `TimeSeriesAnalyzer` bu seriyi karşılaştırabilir, ama henüz
-tarama akışına ve puana bağlı değildir.
+döndüren sürümleri (içerik özeti) eler; sürüm listesi 6 saat önbellekte tutulur. `TimeSeriesAnalyzer`
+yıl başına bir kare seçer ve ardışık kareleri karşılaştırır.
+
+**Puana katılmaz, ölçüldü (2026-10-31, `scripts/calibrate_history.py`, `docs/calibration-history-z16.json`).**
+60 sıradan konumun ham tarihsel skoru: medyan 95, p90 100, p99 100. Esri şehirleri sık yeniler; her yeni
+çekim "yapı belirdi/kayboldu" sayılır. 20 referans tesisin çoğu kontrol şehirlerinden düşük çıktı (Groom Lake
+3, Natanz 54, Kadıköy 100). Sıradan konumları tesislerden ayırmayan bir sinyal puana girerse her şehri
+işaretler. "Bulanıklık uygulandı" olayı 60 taban konumunda hiç görülmedi; tek başına eşik kurmaya yetecek
+örnek yok.
+
+**Kanıt olarak kullanılır.** Bir bulgu kaydedilince tarama görevi `build_anomaly_history` görevini kuyruğa
+atar; konumun yıllar içindeki farklı görüntüleri ve değişim tarihleri `meta_data["history"]`'ye yazılır ve
+bulgu sayfasında "Yıllar içinde" şeridinde gösterilir (`GET /anomalies/{id}/history`; yoksa bir kez
+kuyruğa atılır, takılan iş 15 dk, başarısız iş 1 saat sonra yeniden denenir).
+
+**Düzeltilen hata:** `_select_best_per_year`, Esri'nin ISO tarihlerini eski CDX biçimi sanıp
+`int("2016-01-")` ile patlıyordu; geniş `except` hatayı yuttuğu için analiz her konumda 0 kare döndürüyordu
+(referans taramasında 20/20).

@@ -703,6 +703,10 @@ class WaybackFetcher:
         "https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json"
     )
     MAX_SNAPSHOTS: int = 10
+    # Sürüm listesi büyük ve günde en fazla bir kez değişir; her konum için yeniden
+    # indirmek bir bulgunun zaman serisini ~25 sn'ye çıkarıyordu.
+    RELEASES_TTL_S: float = 6 * 3600
+    _releases_cache: Optional[Tuple[float, List[Dict[str, object]]]] = None
 
     def __init__(self) -> None:
         self._client: Optional[httpx.AsyncClient] = None
@@ -731,6 +735,9 @@ class WaybackFetcher:
 
     async def list_releases(self) -> List[Dict[str, object]]:
         """Esri Wayback sürümlerini tarih sırasıyla döndürür: {release, date, url_template}."""
+        cached = WaybackFetcher._releases_cache
+        if cached is not None and time.monotonic() - cached[0] < self.RELEASES_TTL_S:
+            return cached[1]
         response = await self._require_client().get(self.CONFIG_URL)
         response.raise_for_status()
         releases: List[Dict[str, object]] = []
@@ -745,6 +752,7 @@ class WaybackFetcher:
                 {"release": int(release), "date": date, "url_template": item.get("itemURL", "")}
             )
         releases.sort(key=lambda r: r["date"])  # type: ignore[arg-type,return-value]
+        WaybackFetcher._releases_cache = (time.monotonic(), releases)
         return releases
 
     @staticmethod

@@ -522,7 +522,7 @@ class TimeSeriesAnalyzer:
                     snap_info["_year"] = year
 
         except Exception as exc:
-            logger.error("Timeline toplama hatasi: %s", exc)
+            logger.exception("Timeline toplama hatasi: %s", exc)
 
         # TimelineEntry listesi olustur
         entries: List[TimelineEntry] = []
@@ -601,17 +601,31 @@ class TimeSeriesAnalyzer:
             if len(candidates) == 1:
                 best.append(candidates[0])
             else:
-                # Yilin ortasina (1 Temmuz) en yakin olani sec
-                mid_year_target = f"{year}0701"
+                # Yilin ortasina (1 Temmuz) en yakin olani sec. Esri Wayback ISO tarih
+                # verir; eski CDX bicimi (yyyyMMdd...) icin int(ts[:8]) ISO'da
+                # "2016-01-" uretip tum zaman serisini sessizce bosaltiyordu.
+                mid_year = datetime(year, 7, 1)
                 candidates.sort(
                     key=lambda s: abs(
-                        int(s.get("timestamp", "0")[:8] or "0")
-                        - int(mid_year_target)
+                        (TimeSeriesAnalyzer._parse_date(s.get("timestamp", "")) or mid_year)
+                        - mid_year
                     )
                 )
                 best.append(candidates[0])
 
         return best
+
+    @staticmethod
+    def _parse_date(timestamp: str) -> Optional[datetime]:
+        """ISO 8601 ya da CDX (yyyyMMddHHmmss) zaman damgasini tarihe cevirir."""
+        if not timestamp:
+            return None
+        for fmt, length in (("%Y-%m-%d", 10), ("%Y%m%d", 8)):
+            try:
+                return datetime.strptime(timestamp[:length], fmt)
+            except ValueError:
+                continue
+        return None
 
     @staticmethod
     def _parse_year(timestamp: str) -> int:

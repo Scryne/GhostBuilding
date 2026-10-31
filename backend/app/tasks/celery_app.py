@@ -86,6 +86,7 @@ celery_app.conf.task_default_routing_key = "default"
 
 celery_app.conf.task_routes = {
     "app.tasks.scan_tasks.scan_coordinate": {"queue": "scan"},
+    "app.tasks.scan_tasks.build_anomaly_history": {"queue": "scan"},
     "app.tasks.scan_tasks.batch_scan_region": {"queue": "scan_batch"},
     "app.tasks.scan_tasks.scan_high_priority_regions": {"queue": "scan"},
     "app.tasks.maintenance_tasks.*": {"queue": "maintenance"},
