@@ -1449,3 +1449,72 @@ async def get_anomaly_history(
         await db.commit()
 
     return AnomalyHistory(**{k: v for k, v in history.items() if k in AnomalyHistory.model_fields})
+
+
+class MlFootprintRule(BaseModel):
+    osm_min: int
+    ml_share_max: float
+
+
+class MlFootprintBaseline(BaseModel):
+    false_alarms: int
+    baseline_n: int
+    reference_hits: int
+    reference_n: int
+
+
+class AnomalyMlFootprints(BaseModel):
+    """Karodaki Microsoft ML bina izi ↔ OSM bina sayısı; kanıttır, puana katılmaz."""
+
+    status: str = Field(description="ready | no_coverage | pending | failed | disabled")
+    source: Optional[str] = None
+    zoom: Optional[int] = None
+    quadkey: Optional[str] = None
+    generated_at: Optional[str] = None
+    osm: Optional[int] = None
+    ml: Optional[int] = None
+    ml_share: Optional[float] = None
+    flag: bool = False
+    rule: Optional[MlFootprintRule] = None
+    baseline: Optional[MlFootprintBaseline] = None
+
+
+@router.get(
+    "/{anomaly_id}/ml-footprints",
+    response_model=AnomalyMlFootprints,
+    summary="Microsoft ML bina izleri kanıtı",
+    description=(
+        "Bulgunun karosunda OSM bina sayısı ve Microsoft Global ML Building Footprints izi. OSM'de "
+        "en az 4 bina olup ML payı %2'nin altındaysa `flag`: Bing görüntüsünde de binalar görünmüyor "
+        "olabilir (bağımsız sağlayıcı). Puana katılmaz (docs/spike-bina-izleri.md, Deneme 2). Henüz "
+        "üretilmemişse bir kez kuyruğa atılır ve `pending` döner."
+    ),
+    tags=["anomalies"],
+)
+async def get_anomaly_ml_footprints(
+    anomaly_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> AnomalyMlFootprints:
+    anomaly = (await db.execute(select(Anomaly).where(Anomaly.id == anomaly_id))).scalar_one_or_none()
+    if anomaly is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Anomali bulunamadı: {anomaly_id}")
+    if not settings.ENABLE_ML_FOOTPRINTS:
+        return AnomalyMlFootprints(status="disabled")
+
+    meta = dict(anomaly.meta_data or {})
+    evidence = meta.get("ml_footprints")
+    now = datetime.now(timezone.utc)
+
+    if _history_due(evidence, now):  # aynı yeniden deneme kuralı: yok / takılmış / başarısız
+        try:
+            from app.tasks.scan_tasks import build_anomaly_ml_footprints
+
+            build_anomaly_ml_footprints.delay(str(anomaly.id))
+        except Exception as exc:
+            logger.warning("ML izi kanıtı kuyruğa atılamadı (%s): %s", anomaly_id, exc)
+            return AnomalyMlFootprints(status="pending")
+        evidence = {"status": "pending", "queued_at": now.isoformat()}
+        anomaly.meta_data = {**meta, "ml_footprints": evidence}
+        await db.commit()
+
+    return AnomalyMlFootprints(**{k: v for k, v in evidence.items() if k in AnomalyMlFootprints.model_fields})

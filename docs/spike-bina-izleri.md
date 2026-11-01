@@ -72,3 +72,7 @@ eklenmeli: bulgu kartında "Microsoft ML izleri bu karoda yok (OSM: N bina)" sat
 birlikte. Puana girmesi için Fransa dışından en az 20 tesis ve ülke başına taban gerekir.
 Ürünleştirme maliyeti: z9 dosyasının indirilip önbelleklenmesi (konum başına bir kez, ~10–80 MB),
 karo süzgeci akışla (dosya belleğe alınmadan). Bu iş yol haritasında ayrı bir adım olarak duruyor.
+
+**Ürünleşti (2026-11-01):** `backend/app/services/ml_footprints_service.py`, uç `GET /anomalies/{id}/ml-footprints`,
+ön yüz `MlFootprintsRow`. Fark: deney konuma ortalanmış kutu kullanıyordu, ürün taramanın z16 karo sınırını kullanır
+(Kadıköy 322 → 315). Puana bağlanması için yukarıdaki koşul (Fransa dışından ≥ 20 tesis, ülke başına taban) hâlâ geçerli.

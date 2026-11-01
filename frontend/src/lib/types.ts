@@ -148,6 +148,21 @@ export interface AnomalyHistory {
   }[];
 }
 
+/** Microsoft ML bina izi ↔ OSM kıyası: kanıt, puan değil (Deneme 2, taban 0/49). */
+export interface AnomalyMlFootprints {
+  status: "ready" | "no_coverage" | "pending" | "failed" | "disabled";
+  source: string | null;
+  zoom: number | null;
+  quadkey: string | null;
+  generated_at: string | null;
+  osm: number | null;
+  ml: number | null;
+  ml_share: number | null;
+  flag: boolean;
+  rule: { osm_min: number; ml_share_max: number } | null;
+  baseline: { false_alarms: number; baseline_n: number; reference_hits: number; reference_n: number } | null;
+}
+
 export interface AnomalyDetail {
   id: string;
   lat: number;

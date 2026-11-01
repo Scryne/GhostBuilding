@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # değilse OSM ↔ görüntü karşılaştırması (hayalet bina / gizli yapı) ÇALIŞMAZ: genel
     # COCO modeli yukarıdan bina tanımaz, sonucu uydurma olur.
     BUILDING_DETECTOR_WEIGHTS: Optional[str] = None
+    # Microsoft ML bina izleri kanıtı (docs/spike-bina-izleri.md Deneme 2): bulgu başına bir kez,
+    # z9 dosyası (onlarca MB) STORAGE_ROOT/ml_footprints altına önbelleklenir. Puana girmez.
+    ENABLE_ML_FOOTPRINTS: bool = True
     # Kullanılmıyor: Google tile'ları artık çekilmiyor (resmî olmayan uç). Eski .env'ler
     # bozulmasın diye alan duruyor.
     GOOGLE_MAPS_API_KEY: Optional[str] = None

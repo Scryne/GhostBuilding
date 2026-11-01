@@ -276,6 +276,11 @@ def scan_coordinate(
                 build_anomaly_history.delay(anomaly_id)
             except Exception as exc:  # kuyruk yoksa bulgu sayfasi istegi yeniden dener
                 logger.warning("Zaman serisi kuyruga atilamadi (%s): %s", anomaly_id, exc)
+            if settings.ENABLE_ML_FOOTPRINTS:
+                try:
+                    build_anomaly_ml_footprints.delay(anomaly_id)
+                except Exception as exc:
+                    logger.warning("ML izi kaniti kuyruga atilamadi (%s): %s", anomaly_id, exc)
 
         _update_progress(task_id, 90, "Analiz tamamlandı")
         result["completed_at"] = datetime.now(timezone.utc).isoformat()
@@ -343,6 +348,29 @@ def build_anomaly_history(anomaly_id: str) -> Dict[str, Any]:
     history = _run_async(store_anomaly_history(anomaly_id))
     return {"anomaly_id": anomaly_id, "status": history.get("status"),
             "snapshots": len(history.get("snapshots", []))}
+
+
+# ---------------------------------------------------------------------------
+# Task: build_anomaly_ml_footprints
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(
+    name="app.tasks.scan_tasks.build_anomaly_ml_footprints",
+    max_retries=2,
+    default_retry_delay=300,
+    acks_late=True,
+)
+def build_anomaly_ml_footprints(anomaly_id: str) -> Dict[str, Any]:
+    """Bulgunun karosunda Microsoft ML bina izi ile OSM bina sayisini kiyaslar.
+
+    Kanit, puan degil (ml_footprints_service): OSM'de bina olup ML izi olmayan karo, Bing
+    goruntusunde de binalarin gorunmedigini dusundurur (bagimsiz dorduncu saglayici).
+    """
+    from app.services.ml_footprints_service import store_anomaly_ml_footprints
+
+    evidence = _run_async(store_anomaly_ml_footprints(anomaly_id))
+    return {"anomaly_id": anomaly_id, "status": evidence.get("status"), "flag": evidence.get("flag")}
 
 
 # ---------------------------------------------------------------------------

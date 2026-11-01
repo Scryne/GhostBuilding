@@ -29,6 +29,7 @@ import { AnomalyCategory, type AnomalyDetail, type VerificationVote } from "@/li
 import ProviderComparison from "./ProviderComparison";
 import VerificationPanel from "./VerificationPanel";
 import HistoryStrip from "./HistoryStrip";
+import MlFootprintsRow from "./MlFootprintsRow";
 
 const PROVIDER_ORDER = ["esri", "maptiler", "ign"];
 
@@ -228,7 +229,12 @@ export default function EvidenceView({ detail, variant = "panel", onUpdated }: E
       </section>
     ) : null;
 
-  const history = <HistoryStrip anomalyId={detail.id} compact={!isPage} />;
+  const history = (
+    <>
+      <HistoryStrip anomalyId={detail.id} compact={!isPage} />
+      <MlFootprintsRow anomalyId={detail.id} />
+    </>
+  );
 
   const verification = (
     <section>

@@ -9,6 +9,7 @@ import type {
   AnomalyListItem,
   AnomalyDetail,
   AnomalyHistory,
+  AnomalyMlFootprints,
   ScanRequest,
   ScanResponse,
   ScanStatusResponse,
@@ -283,6 +284,10 @@ export const anomalyApi = {
   /** GET /anomalies/:id/history — Esri Wayback zaman serisi (yoksa kuyruğa atılır) */
   getHistory: (id: string) =>
     api.get<AnomalyHistory>(`/anomalies/${id}/history`).then((r) => r.data),
+
+  /** GET /anomalies/:id/ml-footprints — Microsoft ML bina izi kanıtı (yoksa kuyruğa atılır) */
+  getMlFootprints: (id: string) =>
+    api.get<AnomalyMlFootprints>(`/anomalies/${id}/ml-footprints`).then((r) => r.data),
 
   /** GET /anomalies/stats — İstatistikler */
   getStats: () =>
