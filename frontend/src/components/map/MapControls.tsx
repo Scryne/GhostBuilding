@@ -14,7 +14,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { useMapContext } from "./GhostMap";
+import { useMapContext } from "./MapState";
 import { anomalyApi } from "@/lib/api";
 import { formatCoordsDecimal, cn } from "@/lib/utils";
 import { toast } from "@/components/ui/Toast";

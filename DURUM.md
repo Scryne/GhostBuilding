@@ -3,7 +3,7 @@
 > **Ne bu dosya:** sertifika değil **envanter**. Ölçülen gerçek durum; "kapalı" ya da "yok" yazan
 > satır kusur değil, kayıt. Kapanış standardı: `ScryneOS/🎯 100-Command-Center/Kapanis-Standardi.md`
 
-**Ölçüm tarihi:** 2026-09-27 (bağımlılık ve temizlik: 2026-10-26; tarihsel kanıt: 2026-10-31; ML izi kanıtı: 2026-11-01)
+**Ölçüm tarihi:** 2026-09-27 (bağımlılık ve temizlik: 2026-10-26; tarihsel kanıt: 2026-10-31; ML izi kanıtı: 2026-11-01; harita ilk boyaması: 2026-11-03)
 **Tek cümle:** Üç resmî uydu kaynağını kalibre edilmiş tabana göre karşılaştıran motor uçtan uca
 çalışıyor; referans taramasında 20 tesisin 3'ü işaretlendi, 7 kontrol konumunun hiçbiri.
 
@@ -26,8 +26,21 @@
 - Kaynaklar: Esri World Imagery, MapTiler Satellite, IGN (Fransa). Sabit, dürüst User-Agent.
 - Kalibrasyon: `docs/calibration-z16.json` (40 konum), `docs/calibration-z16-fransa.json` (20 konum).
 - Referans taraması: `docs/reference-scan.json` (27 konum).
-- Lighthouse (mobil): harita 54/100/100/100, keşfet 84/100/100/100 (perf/a11y/BP/SEO).
-  Harita performansı düşük: kabuk harita bağlamıyla istemcide yükleniyor (LCP 6,7 sn).
+- **Harita ilk boyaması (2026-11-03):** kabuk (üst çubuk, paneller, kontroller, bulgu paneli) artık statik
+  ön-render edilen HTML'de; MapLibre'den bağımsız bağlam `MapState.tsx`'te. Harita tuvali (`GhostMap`,
+  maplibre-gl + CSS) `next/dynamic` + `ssr: false` ile ayrı parça olarak kabuktan sonra yüklenir; yerinde
+  "Harita yükleniyor…" yer tutucusu durur. URL durumu (`?a=&lat=&lng=&z=`) hidrasyondan sonra
+  `useSyncExternalStore` ile okunur. Worker kurulumu değişmedi (`setWorkerUrl` GhostMap modülünde, `public/maplibre/`).
+  Ölçüm: Lighthouse 13.6 mobil ön ayar, `next build` + `next start`, yerel Chromium headless, 3'er koşu:
+  önce perf 55/60/47, LCP 6,6/6,3/7,5 sn, TBT 1030/700/2180 ms; sonra perf 84/81/78, LCP 0,8/0,8/0,8 sn,
+  TBT 640/780/1000 ms; FCP 0,9 → 0,8 sn, CLS 0. LCP öğesi iki durumda da arama kutusunun yer tutucusu.
+  Ortamda dış ağ yoktu: CARTO stili ve karolar yüklenmedi, API kapalıydı (önce/sonra aynı koşul; gerçek
+  ağda tuvalin karo yükü ölçülmedi). Tarayıcı doğrulaması (Playwright, CARTO stili yerel stille taklit):
+  mobil + masaüstü tuval çiziliyor, worker `/maplibre/maplibre-gl-worker.mjs` 200, `onLoad` çalışıyor,
+  `?a=` bulgu panelini, `?z=` zoom'u açıyor, yakınlaştır düğmesi haritayı sürüyor, konsolda worker/hidrasyon hatası yok.
+- Lighthouse (mobil): harita 78–84/100/96/100 (2026-11-03, yukarıda; BP 96 = kapalı API ve ağsız ortamın
+  konsol hataları), keşfet 84/100/100/100 (perf/a11y/BP/SEO). Kalan harita maliyeti TBT: MapLibre'nin
+  ayrıştırılması ana iş parçacığında.
 - CI: backend (ruff, pytest, pip-audit), frontend (lint, tip, build, npm audit), Docker imajları.
 
 ## Kapalı / yok (bilerek)

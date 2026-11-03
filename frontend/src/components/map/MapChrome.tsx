@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // MapChrome.tsx — Harita ekranının kabuğu (üst çubuk, sol panel, alt istatistik)
-// GhostMap'in children'ı olarak render edilir; filtreler, altlık ve seçim doğrudan
+// Sunucuda render edilir (MapLibre beklenmez); filtreler, altlık ve seçim doğrudan
 // harita bağlamını (useMapContext) değiştirir.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useMapContext, BASEMAPS, type BasemapId } from "./GhostMap";
+import { useMapContext, BASEMAPS, type BasemapId } from "./MapState";
 import { useAnomalyList, useAnomalyStats } from "@/hooks/useAnomaly";
 import { useAuth } from "@/hooks/useAuth";
 import {
