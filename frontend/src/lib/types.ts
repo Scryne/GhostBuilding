@@ -276,6 +276,28 @@ export interface RegisterResponse {
   username: string;
   role: UserRole;
   message: string;
+  /** Sunucuda e-posta gönderimi açık mı (SMTP yapılandırılmamışsa "disabled") */
+  email_delivery?: "enabled" | "disabled";
+}
+
+export interface VerifyEmailResponse {
+  status: "verified" | "already_verified";
+  message: string;
+}
+
+/** E-posta adresi YA DA süresi dolmuş doğrulama bağlantısının token'ı */
+export interface ResendVerificationRequest {
+  email?: string;
+  token?: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
 }
 
 export interface LoginRequest {
