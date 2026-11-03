@@ -54,6 +54,7 @@ class TestUser(TestBase):
     role = Column(String, default="USER", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
+    session_version = Column(Integer, default=0, nullable=False)
     trust_score = Column(Float, default=50.0)
     verified_count = Column(Integer, default=0)
     submitted_count = Column(Integer, default=0)

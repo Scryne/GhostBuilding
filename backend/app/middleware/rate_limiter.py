@@ -4,6 +4,8 @@ rate_limiter.py — Redis tabanlı sliding window rate limiting middleware.
 Her endpoint grubu için farklı limit kuralları uygular:
 - /api/v1/anomalies/scan: IP başına saatte 10 istek
 - /api/v1/auth/login: IP başına dakikada 5 istek
+- /api/v1/auth/forgot-password, /resend-verification: IP başına saatte 5 istek
+- /api/v1/auth/reset-password: IP başına saatte 10 istek
 - /api/v1/ genel: IP başına dakikada 60 istek
 
 Limit aşılınca HTTP 429 Too Many Requests + Retry-After header döner.
@@ -64,6 +66,35 @@ RATE_LIMIT_RULES: list[tuple[str, str, RateLimitRule]] = [
             max_requests=5,
             window_seconds=60,
             key_prefix="rl:login",
+        ),
+    ),
+    # E-posta tetikleyen uçlar: kötüye kullanımda üçüncü kişilerin gelen kutusu dolar
+    (
+        "/api/v1/auth/forgot-password",
+        "POST",
+        RateLimitRule(
+            max_requests=settings.RATE_LIMIT_EMAIL_ACTIONS_PER_HOUR,
+            window_seconds=3600,
+            key_prefix="rl:forgot",
+        ),
+    ),
+    (
+        "/api/v1/auth/resend-verification",
+        "POST",
+        RateLimitRule(
+            max_requests=settings.RATE_LIMIT_EMAIL_ACTIONS_PER_HOUR,
+            window_seconds=3600,
+            key_prefix="rl:resend",
+        ),
+    ),
+    # Token deneme-yanılmasına karşı (token imzalı olduğu için tahmin edilemez; yine de sınır)
+    (
+        "/api/v1/auth/reset-password",
+        "POST",
+        RateLimitRule(
+            max_requests=settings.RATE_LIMIT_RESET_SUBMIT_PER_HOUR,
+            window_seconds=3600,
+            key_prefix="rl:reset",
         ),
     ),
     (

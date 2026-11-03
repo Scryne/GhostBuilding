@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.session import get_db
+from app.services import email_service
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -125,6 +126,8 @@ async def detailed_health_check(db: AsyncSession = Depends(get_db)) -> dict[str,
         "database": db_status["status"],
         "redis": redis_status["status"],
         "celery": celery_status["status"],
+        # İsteğe bağlı bileşen: kapalı olması genel durumu düşürmez, ama gizlenmez de
+        "email": email_service.email_status()["status"],
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT,
         "uptime_seconds": uptime_seconds,
@@ -132,6 +135,7 @@ async def detailed_health_check(db: AsyncSession = Depends(get_db)) -> dict[str,
             "database": db_status,
             "redis": redis_status,
             "celery": celery_status,
+            "email": email_service.email_status(),
         },
     }
 

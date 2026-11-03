@@ -5,3 +5,6 @@ pytest==9.0.3
 pytest-asyncio==1.4.0
 aiosqlite==0.20.0
 ruff==0.16.9
+# Sahte SMTP sunucusu (gerçek gönderim testi) ve STARTTLS için test sertifikası
+aiosmtpd==1.4.6
+trustme==1.2.1

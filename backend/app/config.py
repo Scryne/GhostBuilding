@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 class Settings(BaseSettings):
     # APP Configuration
@@ -55,6 +55,29 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_SCAN_PER_HOUR: int = 10
     RATE_LIMIT_LOGIN_PER_MINUTE: int = 5
+    # Parola sıfırlama / doğrulama yeniden gönderme: IP başına (middleware) ve hedef adres
+    # başına (auth_service) saatlik üst sınır. Adres sınırı aşılınca yanıt değişmez, yalnız
+    # e-posta gönderilmez — aksi hâlde sınır hesabın varlığını sızdırırdı.
+    RATE_LIMIT_EMAIL_ACTIONS_PER_HOUR: int = 5
+    RATE_LIMIT_EMAIL_PER_ADDRESS_PER_HOUR: int = 3
+    RATE_LIMIT_RESET_SUBMIT_PER_HOUR: int = 10
+
+    # E-POSTA (SMTP) Configuration
+    # SMTP_HOST tanımsızsa e-posta gönderimi KAPALIDIR: uygulama çalışır, açılışta ve
+    # /health'te "kapalı" der, kayıt yanıtı bunu bildirir, parola sıfırlama 503 döner.
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    # Gönderen adresi, ör. "GhostBuilding <noreply@alanadi>". Tanımsızsa SMTP_USERNAME.
+    SMTP_FROM: Optional[str] = None
+    # "starttls" (587), "ssl" (465) ya da "none" (yalnız yerel/test sunucusu).
+    SMTP_SECURITY: Literal["starttls", "ssl", "none"] = "starttls"
+    SMTP_TIMEOUT_SECONDS: float = 10.0
+    # E-postadaki bağlantıların kökü (ön yüz adresi). APP_NAME bir ad, adres değildir.
+    FRONTEND_URL: str = "http://localhost:3000"
+    EMAIL_VERIFY_TOKEN_HOURS: int = 24
+    PASSWORD_RESET_TOKEN_MINUTES: int = 30
 
     # SENTRY Configuration
     SENTRY_DSN: Optional[str] = None
