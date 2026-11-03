@@ -37,3 +37,6 @@ next-env.d.ts
 
 # build sırasında node_modules/maplibre-gl/dist altından kopyalanır (scripts/copy-maplibre-worker.mjs)
 /public/maplibre/
+
+# next dev her çalıştırmada yeniden yazar (node_modules/next/dist/server/lib/generate-agent-files.js)
+/AGENTS.md

@@ -149,8 +149,8 @@ npm run lint && npm run typecheck && npm run build
 
 - Backend 230 test, ruff temiz, bağımlılık denetimi 0 açık. Frontend lint, tip ve üretim derlemesi
   temiz, üretim bağımlılıklarında 0 açık. CI her push'ta bunların hepsini koşar ve Docker imajlarını derler.
-- Lighthouse (mobil): erişilebilirlik, en iyi uygulama ve SEO iki sayfada 100. Performans keşfette 84,
-  haritada 54: kabuk, tam ekran WebGL haritayla birlikte istemcide yükleniyor.
+- Lighthouse (mobil): erişilebilirlik ve SEO iki sayfada 100. Performans keşfette 84, haritada 78–84
+  (önce 54): kabuk statik HTML'de gelir, MapLibre tuvali ondan sonra yüklenir. Ayrıntı: [DURUM.md](DURUM.md).
 - Testler SQLite ile koşar; PostGIS'e özgü sorgular (mekânsal filtre, yakınlık) yalnız uçtan uca
   çalıştırmada doğrulandı.
 - Staging dağıtım iş akışı elle tetiklenir; henüz bir sunucu yok.

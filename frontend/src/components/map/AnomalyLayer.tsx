@@ -13,7 +13,7 @@ import type {
   MapMouseEvent,
   SymbolLayerSpecification,
 } from "maplibre-gl";
-import { useMapContext } from "./GhostMap";
+import { useMapContext } from "./MapState";
 import { useMapAnomalies } from "@/hooks/useAnomaly";
 import { CATEGORY_COLORS, CATEGORY_LABELS, formatCoordsCompact } from "@/lib/utils";
 import type { AnomalyCategory } from "@/lib/types";

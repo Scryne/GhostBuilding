@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 import { Radar, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useScanStatus } from "@/hooks/useAnomaly";
-import { useMapContext } from "./GhostMap";
+import { useMapContext } from "./MapState";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/Toast";
 
