@@ -129,6 +129,11 @@ docker compose exec backend python scripts/seed_data.py      # referans taramas�
 
 Arayüz http://localhost:3000, API belgeleri http://localhost:8000/docs.
 
+**E-posta (isteğe bağlı).** Doğrulama ve şifre sıfırlama bağlantıları SMTP ile gönderilir: `.env`'de
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_SECURITY`
+(`starttls` | `ssl` | `none`) ve bağlantıların kökü olan `FRONTEND_URL`. `SMTP_HOST` boşsa uygulama çalışır;
+`/api/v1/health` `"email": "disabled"` der, kayıt yanıtı bunu bildirir, şifre sıfırlama 503 döner.
+
 Yerel geliştirme (Docker'sız backend):
 
 ```bash
