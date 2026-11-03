@@ -1,74 +1,26 @@
 /**
  * instrumentation-client.ts — Frontend Sentry SDK (Client-Side)
  *
- * Next.js client tarafı Sentry konfigürasyonu.
- * Browser'da çalışan JavaScript hatalarını ve performans verilerini yakalar.
- *
- * @see https://docs.sentry.io/platforms/javascript/guides/nextjs/
+ * SDK burada statik import EDİLMEZ: statik import, DSN tanımlı olmasa bile Sentry'yi
+ * (Session Replay/rrweb dahil) her sayfanın ana parçasına koyuyor ve ana iş parçacığında
+ * ayrıştırılıyordu. Kurulum src/lib/sentry-client.ts'te; yalnız DSN varken yüklenir.
+ * DSN derleme anında koda gömülür, yoksa aşağıdaki dal ve parça derlemeden düşer.
  */
 
-import * as Sentry from "@sentry/nextjs";
+import type * as SentryNs from "@sentry/nextjs";
 
-const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN;
+let sentry: typeof SentryNs | null = null;
 
-if (SENTRY_DSN) {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-
-    // Environment
-    environment: process.env.NODE_ENV || "development",
-    release: `ghostbuilding-frontend@${process.env.NEXT_PUBLIC_APP_VERSION || "0.1.0"}`,
-
-    // Performance Monitoring
-    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.2 : 1.0,
-
-    // Session Replay — üretimde %10 normal, %100 hata durumunda
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
-
-    integrations: [
-      Sentry.replayIntegration({
-        // Hassas verileri maskeleme
-        maskAllText: false,
-        maskAllInputs: true,
-        blockAllMedia: false,
-      }),
-      Sentry.browserTracingIntegration({
-        // Slow request eşiği
-        enableLongTask: true,
-      }),
-    ],
-
-    // Hassas verileri filtrele
-    beforeSend(event) {
-      // Authorization header'larını temizle
-      if (event.request?.headers) {
-        const headers = event.request.headers as Record<string, string>;
-        if (headers["authorization"]) {
-          headers["authorization"] = "***REDACTED***";
-        }
-        if (headers["cookie"]) {
-          headers["cookie"] = "***REDACTED***";
-        }
-      }
-      return event;
-    },
-
-    // Gürültücü hataları filtrele
-    ignoreErrors: [
-      // Browser eklentileri
-      "top.GLOBALS",
-      "ResizeObserver loop",
-      // Ağ hataları (kullanıcı tarafı)
-      "Network request failed",
-      "Failed to fetch",
-      "Load failed",
-      // Cancelled navigasyon
-      "Navigation cancelled",
-      "AbortError",
-    ],
+if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  void import("./lib/sentry-client").then((m) => {
+    sentry = m.Sentry;
   });
 }
 
-// Next.js 15+ istemci gezinme izleri (eski sentry.client.config.ts'in yerine bu dosya yüklenir)
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+// Next.js 15+ istemci gezinme izleri. SDK yüklenmeden önceki gezinmeler iz üretmez
+// (ilk sayfa yüklemesi browserTracingIntegration tarafından ayrıca ölçülür).
+export function onRouterTransitionStart(
+  ...args: Parameters<typeof SentryNs.captureRouterTransitionStart>
+) {
+  sentry?.captureRouterTransitionStart(...args);
+}
