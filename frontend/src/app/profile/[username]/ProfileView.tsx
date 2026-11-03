@@ -79,7 +79,11 @@ export default function ProfileView({ username }: { username: string }) {
                   </p>
                   {!user.is_verified && (
                     <p className="mt-2 text-xs text-censored">
-                      E-posta adresiniz doğrulanmadı. Gelen kutunuzdaki bağlantıyı açın.
+                      E-posta adresiniz doğrulanmadı. Gelen kutunuzdaki bağlantıyı açın ya da{" "}
+                      <Link href="/auth/verify-email" className="underline underline-offset-2 hover:text-foreground">
+                        yeni bağlantı isteyin
+                      </Link>
+                      .
                     </p>
                   )}
                 </div>

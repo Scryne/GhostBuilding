@@ -7,6 +7,7 @@ import redis.asyncio as redis
 
 # Import configs and DB settings
 from app.config import settings
+from app.services import email_service
 from app.db.session import engine
 from app.routers import map_routes, anomalies, auth, verifications
 from app.routers import health as health_router
@@ -51,6 +52,16 @@ async def lifespan(app: FastAPI):
         environment=settings.ENVIRONMENT,
         version=settings.VERSION,
     )
+
+    # E-posta durumu: kapalıysa açıkça söyle (uygulama yine çalışır)
+    if email_service.email_enabled():
+        logger.info("email_enabled", security=email_service.email_status()["security"])
+        if not (settings.SMTP_FROM or settings.SMTP_USERNAME):
+            logger.error("email_sender_missing", reason="SMTP_FROM ya da SMTP_USERNAME tanımlı değil")
+        if settings.ENVIRONMENT == "production" and "localhost" in settings.FRONTEND_URL:
+            logger.warning("email_links_point_to_localhost", reason="FRONTEND_URL canlı ön yüz adresi olmalı")
+    else:
+        logger.warning("email_disabled", reason=email_service.EMAIL_DISABLED_MESSAGE)
 
     # Set Prometheus app info
     set_app_info(version=settings.VERSION, environment=settings.ENVIRONMENT)

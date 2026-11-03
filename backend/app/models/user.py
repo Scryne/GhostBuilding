@@ -16,6 +16,9 @@ class User(Base):
     role = Column(String, default=UserRole.USER.value, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)  # Email doğrulaması
+    # Oturum sürümü: access/refresh token'ları bunu ``tv`` claim'i olarak taşır. Şifre
+    # sıfırlama bir artırır, böylece önceki tüm oturumlar geçersiz kalır.
+    session_version = Column(Integer, default=0, server_default=text("0"), nullable=False)
 
     trust_score = Column(Float, default=50.0)
     verified_count = Column(Integer, default=0)

@@ -20,6 +20,8 @@ Kullanım:
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 import re
 import uuid
@@ -39,6 +41,7 @@ from app.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.models.enums import UserRole
+from app.services import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +58,11 @@ BRUTE_FORCE_LOCKOUT_MINUTES = 15         # Kilitleme süresi (dakika)
 # Token prefix'leri — Redis key'lerinde kullanılır
 TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
 BRUTE_FORCE_PREFIX = "auth:bruteforce:"
+EMAIL_RATE_PREFIX = "auth:mailrate:"
+
+# Amaçlı token'ların audience değerleri — oturum token'larıyla karışmasınlar diye
+EMAIL_VERIFY_AUDIENCE = "ghostbuilding:email-verify"
+PASSWORD_RESET_AUDIENCE = "ghostbuilding:password-reset"
 
 # ---------------------------------------------------------------------------
 # Şifre Hashing (bcrypt)
@@ -179,6 +187,7 @@ class AuthService:
         user_id: str,
         role: str = UserRole.USER.value,
         *,
+        session_version: int = 0,
         extra_claims: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
@@ -197,6 +206,7 @@ class AuthService:
             "sub": str(user_id),
             "role": role,
             "type": "access",
+            "tv": int(session_version or 0),
             "iat": now,
             "exp": now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
             "jti": str(uuid.uuid4()),
@@ -207,7 +217,7 @@ class AuthService:
         return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
 
     @staticmethod
-    def create_refresh_token(user_id: str) -> str:
+    def create_refresh_token(user_id: str, *, session_version: int = 0) -> str:
         """
         JWT refresh token oluşturur (30 gün geçerli).
 
@@ -221,6 +231,7 @@ class AuthService:
         payload = {
             "sub": str(user_id),
             "type": "refresh",
+            "tv": int(session_version or 0),
             "iat": now,
             "exp": now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
             "jti": str(uuid.uuid4()),
@@ -406,45 +417,157 @@ class AuthService:
             logger.warning("Brute force temizleme hatası: %s", exc)
 
     # ===================================================================
-    # Email Doğrulama (placeholder — SMTP sonra eklenecek)
+    # Amaçlı Tek-Kullanımlık Token'lar (e-posta doğrulama, şifre sıfırlama)
+    # ===================================================================
+    #
+    # İkisi de imzalı JWT'dir ama access/refresh token'larından AYRI bir ``aud`` taşır:
+    # ``decode_token`` ``aud`` beklemediği için bu token'lar oturum token'ı olarak
+    # kullanılamaz (PyJWT ``aud`` taşıyan token'ı audience verilmeden reddeder), tersi de
+    # olmaz. Süre ``exp`` ile imzanın içindedir; bu yüzden "süresi dolmuş" ile "geçersiz"
+    # ayrı ayrı söylenebilir.
+    #
+    # Şifre sıfırlama token'ı ayrıca kullanıcının o anki ``session_version`` değerini ve
+    # şifre hash'inin parmak izini taşır. Sıfırlama ikisini de değiştirdiği için token
+    # kullanıldığı anda kendiliğinden geçersizleşir (tek kullanımlık) — Redis'e bağlı değil.
+
+    @staticmethod
+    def _purpose_token(user_id: str, audience: str, lifetime: timedelta, **claims: Any) -> str:
+        now = datetime.now(timezone.utc)
+        payload: Dict[str, Any] = {
+            "sub": str(user_id),
+            "aud": audience,
+            "iat": now,
+            "exp": now + lifetime,
+            "jti": str(uuid.uuid4()),
+            **claims,
+        }
+        return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
+
+    @staticmethod
+    def decode_purpose_token(token: str, audience: str, *, verify_exp: bool = True) -> Dict[str, Any]:
+        """
+        Amaçlı token'ı çözer.
+
+        Raises:
+            PurposeTokenError: ``reason`` = ``"expired"`` ya da ``"invalid"``.
+        """
+        try:
+            return jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[ALGORITHM],
+                audience=audience,
+                options={"verify_exp": verify_exp, "require": ["sub", "aud", "exp"]},
+            )
+        except jwt.ExpiredSignatureError as exc:
+            raise PurposeTokenError("expired") from exc
+        except JWTError as exc:
+            raise PurposeTokenError("invalid") from exc
+
+    @classmethod
+    def create_email_verification_token(cls, user_id: str) -> str:
+        return cls._purpose_token(
+            user_id,
+            EMAIL_VERIFY_AUDIENCE,
+            timedelta(hours=settings.EMAIL_VERIFY_TOKEN_HOURS),
+        )
+
+    @staticmethod
+    def password_fingerprint(hashed_password: Optional[str]) -> str:
+        """Şifre hash'inin anahtarlı kısa parmak izi (hash'in kendisi token'a girmez)."""
+        digest = hmac.new(
+            settings.SECRET_KEY.encode(),
+            (hashed_password or "").encode(),
+            hashlib.sha256,
+        )
+        return digest.hexdigest()[:24]
+
+    @classmethod
+    def create_password_reset_token(cls, user: Any) -> str:
+        return cls._purpose_token(
+            str(user.id),
+            PASSWORD_RESET_AUDIENCE,
+            timedelta(minutes=settings.PASSWORD_RESET_TOKEN_MINUTES),
+            tv=int(getattr(user, "session_version", 0) or 0),
+            pwf=cls.password_fingerprint(getattr(user, "hashed_password", None)),
+        )
+
+    # ===================================================================
+    # Adres Başına E-posta Sınırı
     # ===================================================================
 
     @staticmethod
-    async def send_verification_email(email: str, user_id: str) -> None:
+    async def allow_email_to_address(kind: str, email: str) -> bool:
         """
-        Email doğrulama mesajı gönderir.
+        Aynı adrese saatte en çok ``RATE_LIMIT_EMAIL_PER_ADDRESS_PER_HOUR`` e-posta.
 
-        Şimdilik sadece log'a yazar. SMTP entegrasyonu
-        ileride eklenecektir.
-
-        Args:
-            email: Hedef email adresi.
-            user_id: Kullanıcı UUID string.
+        Çağıran uç, sınır aşılsa da AYNI yanıtı döner — yoksa sınır, hesabın var olup
+        olmadığını sızdırırdı. Redis anahtarında adresin kendisi değil anahtarlı hash'i tutulur.
+        Redis erişilemezse diğer sınırlayıcılar gibi geçirir (IP sınırı yine geçerlidir).
         """
-        # Doğrulama token'ı oluştur
-        verification_token = str(uuid.uuid4())
-
-        # Redis'te 24 saat sakla
+        digest = hmac.new(settings.SECRET_KEY.encode(), email.lower().encode(), hashlib.sha256).hexdigest()
+        key = f"{EMAIL_RATE_PREFIX}{kind}:{digest[:32]}"
         try:
             r = await _get_redis()
-            await r.set(
-                f"email:verify:{verification_token}",
-                str(user_id),
-                ex=86400,  # 24 saat
-            )
+            pipe = r.pipeline()
+            pipe.incr(key)
+            pipe.expire(key, 3600, nx=True)
+            results = await pipe.execute()
             await r.aclose()
+            count = int(results[0])
         except Exception as exc:
-            logger.warning("Email doğrulama token kayıt hatası: %s", exc)
+            logger.warning("E-posta adres sınırı kontrol hatası (grace): %s", type(exc).__name__)
+            return True
+        return count <= settings.RATE_LIMIT_EMAIL_PER_ADDRESS_PER_HOUR
 
-        # TODO: SMTP entegrasyonu
-        verification_url = f"{settings.APP_NAME}/verify?token={verification_token}"
-        logger.info(
-            "📧 Email doğrulama gönderildi (LOG): "
-            "email=%s user_id=%s url=%s",
-            email,
-            user_id,
-            verification_url,
-        )
+    # ===================================================================
+    # E-posta Gönderimi
+    # ===================================================================
+
+    @classmethod
+    async def send_verification_email(cls, email: str, user_id: str) -> bool:
+        """
+        Doğrulama bağlantısını e-postayla gönderir (bağlantı ``FRONTEND_URL`` kökünden).
+
+        Log'a adres ve token yazılmaz; yalnızca kullanıcı kimliği ve sonuç.
+
+        Returns:
+            Gönderildiyse ``True``; e-posta kapalıysa ya da gönderim başarısızsa ``False``.
+        """
+        token = cls.create_email_verification_token(user_id)
+        sent = await email_service.send_verification_email(email, token)
+        logger.info("Doğrulama e-postası: user_id=%s gönderildi=%s", user_id, sent)
+        return sent
+
+    @classmethod
+    async def send_password_reset_email(cls, user: Any) -> bool:
+        """Sıfırlama bağlantısını gönderir. Log'a adres ve token yazılmaz."""
+        token = cls.create_password_reset_token(user)
+        sent = await email_service.send_password_reset_email(user.email, token)
+        logger.info("Şifre sıfırlama e-postası: user_id=%s gönderildi=%s", user.id, sent)
+        return sent
+
+
+class PurposeTokenError(Exception):
+    """Amaçlı token çözülemedi. ``reason``: ``"expired"`` | ``"invalid"``."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+def session_revoked(payload: Dict[str, Any], user: Any) -> bool:
+    """
+    Token, kullanıcının şu anki oturum sürümünden eskiyse ``True``.
+
+    Şifre sıfırlama ``session_version``'ı bir artırır; o andan önce verilmiş tüm access ve
+    refresh token'ları (``tv`` claim'i eski) reddedilir. ``tv`` taşımayan eski token'lar 0 sayılır.
+    """
+    try:
+        token_version = int(payload.get("tv", 0) or 0)
+    except (TypeError, ValueError):
+        return True
+    return token_version != int(getattr(user, "session_version", 0) or 0)
 
 
 # ---------------------------------------------------------------------------
@@ -521,6 +644,17 @@ async def get_current_user(
 
     if user is None:
         raise credentials_exception
+
+    # Şifre sıfırlandıysa bu token'dan önceki oturumlar geçersizdir
+    if session_revoked(payload, user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "session_revoked",
+                "message": "Oturumunuz sona erdi. Lütfen yeniden giriş yapın.",
+            },
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     # Aktiflik kontrolü
     if hasattr(user, "is_active") and not user.is_active:

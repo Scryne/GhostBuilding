@@ -4,6 +4,12 @@ auth.py — GhostBuilding kimlik doğrulama endpoint'leri.
 JWT tabanlı register, login, refresh, logout ve profil yönetimi
 endpoint'lerini sağlar. Tüm response'lar Pydantic v2 schema kullanır.
 
+E-posta akışları (SMTP, bkz. app/services/email_service.py):
+- POST /auth/verify-email          — doğrulama (süresi dolmuş / geçersiz ayrı kodlarla; GET de var)
+- POST /auth/resend-verification   — yeniden gönder (hesap varlığını sızdırmaz)
+- POST /auth/forgot-password       — sıfırlama bağlantısı (hesap varlığını sızdırmaz)
+- POST /auth/reset-password        — tek kullanımlık token ile yeni şifre; eski oturumlar düşer
+
 Güvenlik:
 - Bcrypt şifre hashing
 - Brute force koruması (5 başarısız → 15 dk blok)
@@ -13,24 +19,29 @@ Güvenlik:
 
 from __future__ import annotations
 
+import hmac
 import logging
 import re
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.models.enums import UserRole
+from app.services import email_service
 from app.services.auth_service import (
+    EMAIL_VERIFY_AUDIENCE,
+    PASSWORD_RESET_AUDIENCE,
+    PurposeTokenError,
     auth_service,
     get_current_user,
     oauth2_scheme,
+    session_revoked,
 )
 from app.utils.sanitizer import validate_safe_string
 
@@ -96,7 +107,8 @@ class RegisterResponse(BaseModel):
                 "email": "user@ghostbuilding.io",
                 "username": "ghost_hunter",
                 "role": "USER",
-                "message": "Kayıt başarılı. Email doğrulama bağlantısı gönderildi.",
+                "message": "Kayıt başarılı. Doğrulama bağlantısı e-posta adresinize gönderiliyor.",
+                "email_delivery": "enabled",
             }
         }
     )
@@ -106,6 +118,10 @@ class RegisterResponse(BaseModel):
     username: str = Field(..., description="Kullanıcı adı")
     role: str = Field(..., description="Atanan rol")
     message: str = Field(..., description="Bilgi mesajı")
+    email_delivery: str = Field(
+        "enabled",
+        description="Sunucuda e-posta gönderimi açık mı: 'enabled' | 'disabled'",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +209,48 @@ class MessageResponse(BaseModel):
     """Genel bilgi mesajı yanıtı."""
 
     message: str = Field(..., description="Bilgi mesajı")
+
+
+# ---------------------------------------------------------------------------
+# E-posta doğrulama / şifre sıfırlama
+# ---------------------------------------------------------------------------
+
+
+class VerifyEmailResponse(BaseModel):
+    """GET /auth/verify-email — Doğrulama sonucu."""
+
+    status: str = Field(..., description="'verified' | 'already_verified'")
+    message: str = Field(..., description="Bilgi mesajı")
+
+
+class VerifyEmailRequest(BaseModel):
+    """POST /auth/verify-email — Doğrulama token'ı."""
+
+    token: str = Field(..., min_length=1, max_length=2048, description="E-postadaki doğrulama token'ı")
+
+
+class ResendVerificationRequest(BaseModel):
+    """POST /auth/resend-verification — e-posta adresi YA DA süresi dolmuş bağlantının token'ı."""
+
+    email: Optional[EmailStr] = Field(None, description="Hesabın e-posta adresi")
+    token: Optional[str] = Field(
+        None,
+        description="Süresi dolmuş doğrulama bağlantısındaki token (imzası yine doğrulanır)",
+        max_length=2048,
+    )
+
+
+class ForgotPasswordRequest(BaseModel):
+    """POST /auth/forgot-password — Sıfırlama bağlantısı isteği."""
+
+    email: EmailStr = Field(..., description="Hesabın e-posta adresi")
+
+
+class ResetPasswordRequest(BaseModel):
+    """POST /auth/reset-password — Yeni şifre."""
+
+    token: str = Field(..., min_length=1, max_length=2048, description="E-postadaki sıfırlama token'ı")
+    new_password: str = Field(..., min_length=8, max_length=128, description="Yeni şifre")
 
 
 # ---------------------------------------------------------------------------
@@ -286,14 +344,15 @@ class ProfileUpdateRequest(BaseModel):
     summary="Yeni kullanıcı kaydı",
     description=(
         "Email, kullanıcı adı ve şifre ile yeni bir hesap oluşturur. "
-        "Şifre bcrypt ile hash'lenir. Email doğrulama bağlantısı gönderilir "
-        "(şimdilik log'a yazılır)."
+        "Şifre bcrypt ile hash'lenir. E-posta gönderimi açıksa doğrulama bağlantısı "
+        "arka planda gönderilir; kapalıysa yanıt bunu `email_delivery: disabled` ile söyler."
     ),
     response_description="Oluşturulan kullanıcı bilgisi ve doğrulama mesajı",
     tags=["auth"],
 )
 async def register(
     body: RegisterRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> RegisterResponse:
     """
@@ -303,7 +362,7 @@ async def register(
     2. Email ve kullanıcı adı benzersizliğini kontrol eder
     3. Şifreyi bcrypt ile hash'ler
     4. Kullanıcıyı veritabanına ekler
-    5. Email doğrulama bağlantısı gönderir (log)
+    5. E-posta doğrulama bağlantısını arka planda gönderir (gönderim kapalıysa söyler)
     """
 
     # Şifre kurallarını doğrula
@@ -350,25 +409,32 @@ async def register(
     await db.commit()
     await db.refresh(new_user)
 
-    # Email doğrulama gönder
-    await auth_service.send_verification_email(
-        email=body.email.lower(),
-        user_id=str(new_user.id),
-    )
+    # E-posta doğrulama — yanıtı SMTP'ye bekletmemek için arka planda
+    if email_service.email_enabled():
+        background_tasks.add_task(
+            auth_service.send_verification_email,
+            email=new_user.email,
+            user_id=str(new_user.id),
+        )
+        delivery = "enabled"
+        message = "Kayıt başarılı. Doğrulama bağlantısı e-posta adresinize gönderiliyor."
+    else:
+        delivery = "disabled"
+        message = (
+            "Kayıt başarılı. E-posta gönderimi bu sunucuda kapalı olduğu için "
+            "doğrulama bağlantısı gönderilemedi."
+        )
 
-    logger.info(
-        "Yeni kullanıcı kaydedildi: id=%s email=%s username=%s",
-        new_user.id,
-        new_user.email,
-        new_user.username,
-    )
+    # Log'a kişisel veri (e-posta) yazılmaz; kimlik yeterli
+    logger.info("Yeni kullanıcı kaydedildi: id=%s e-posta_gönderimi=%s", new_user.id, delivery)
 
     return RegisterResponse(
         id=str(new_user.id),
         email=new_user.email,
         username=new_user.username,
         role=new_user.role,
-        message="Kayıt başarılı. Email doğrulama bağlantısı gönderildi.",
+        message=message,
+        email_delivery=delivery,
     )
 
 
@@ -377,77 +443,284 @@ async def register(
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-@router.get(
+def _email_disabled_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "error": "email_disabled",
+            "message": "E-posta gönderimi bu sunucuda kapalı; bu işlem şu an yapılamıyor.",
+        },
+    )
+
+
+def _token_error(reason: str, *, purpose: str) -> HTTPException:
+    if reason == "expired":
+        message = (
+            "Doğrulama bağlantısının süresi dolmuş."
+            if purpose == "verify"
+            else "Şifre sıfırlama bağlantısının süresi dolmuş."
+        )
+        return HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "token_expired", "message": message},
+        )
+    message = (
+        "Doğrulama bağlantısı geçersiz."
+        if purpose == "verify"
+        else "Şifre sıfırlama bağlantısı geçersiz ya da daha önce kullanılmış."
+    )
+    return HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail={"error": "invalid_token", "message": message},
+    )
+
+
+async def _get_user_by_id(db: AsyncSession, user_id: Optional[str]) -> Optional[User]:
+    if not user_id:
+        return None
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def _get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
+    result = await db.execute(select(User).where(User.email == email.lower()))
+    return result.scalar_one_or_none()
+
+
+async def _apply_email_verification(token: str, db: AsyncSession) -> VerifyEmailResponse:
+    """Doğrulama idempotenttir: aynı bağlantı ikinci kez açılırsa ``already_verified`` döner."""
+    try:
+        payload = auth_service.decode_purpose_token(token, EMAIL_VERIFY_AUDIENCE)
+    except PurposeTokenError as exc:
+        raise _token_error(exc.reason, purpose="verify") from exc
+
+    user = await _get_user_by_id(db, payload.get("sub"))
+    if user is None or not getattr(user, "is_active", True):
+        raise _token_error("invalid", purpose="verify")
+
+    if user.is_verified:
+        return VerifyEmailResponse(
+            status="already_verified",
+            message="E-posta adresiniz zaten doğrulanmış.",
+        )
+
+    user.is_verified = True
+    await db.commit()
+    logger.info("Email doğrulandı: user_id=%s", user.id)
+
+    return VerifyEmailResponse(status="verified", message="E-posta adresiniz doğrulandı.")
+
+
+@router.post(
     "/verify-email",
-    response_model=MessageResponse,
+    response_model=VerifyEmailResponse,
     summary="Email doğrulama",
     description=(
-        "Kayıt sırasında gönderilen doğrulama token'ı ile email adresini doğrular. "
-        "Token Redis'te 24 saat geçerlidir."
+        "E-postadaki doğrulama token'ı ile adresi doğrular (token gövdede: erişim log'larına "
+        "düşmez). Token imzalıdır ve EMAIL_VERIFY_TOKEN_HOURS (varsayılan 24) saat geçerlidir. "
+        "Süresi dolmuş token `token_expired`, bozuk/başka amaçlı token `invalid_token` döner."
     ),
-    response_description="Doğrulama sonuç mesajı",
+    response_description="Doğrulama sonucu",
+    tags=["auth"],
+)
+async def verify_email_post(
+    body: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+) -> VerifyEmailResponse:
+    return await _apply_email_verification(body.token, db)
+
+
+@router.get(
+    "/verify-email",
+    response_model=VerifyEmailResponse,
+    summary="Email doğrulama (sorgu parametresiyle)",
+    description=(
+        "POST ile aynı işlem; eski istemciler için korunur. Token sorgu dizesinde olduğundan "
+        "vekil sunucu log'larına düşebilir — yeni istemciler POST kullanmalı."
+    ),
+    response_description="Doğrulama sonucu",
     tags=["auth"],
 )
 async def verify_email(
     token: str,
     db: AsyncSession = Depends(get_db),
-) -> MessageResponse:
-    """
-    Email doğrulama token'ını doğrular ve kullanıcıyı onaylar.
+) -> VerifyEmailResponse:
+    return await _apply_email_verification(token, db)
 
-    1. Redis'ten `email:verify:{token}` key'ini arar
-    2. Kullanıcı ID'sini alır
-    3. `is_verified = True` yapar
-    4. Token'ı siler (tek kullanımlık)
-    """
-    import redis.asyncio as aioredis
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ENDPOINT: POST /auth/resend-verification — Doğrulama bağlantısını yeniden gönder
+# ═══════════════════════════════════════════════════════════════════════════
+
+RESEND_ACCEPTED_MESSAGE = (
+    "Bu adrese ait doğrulanmamış bir hesap varsa yeni doğrulama bağlantısı gönderildi."
+)
+
+
+@router.post(
+    "/resend-verification",
+    response_model=MessageResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Doğrulama bağlantısını yeniden gönder",
+    description=(
+        "E-posta adresi ya da süresi dolmuş bağlantının token'ı ile yeni doğrulama bağlantısı "
+        "ister. Yanıt, hesabın var olup olmadığını ya da doğrulanmış olup olmadığını "
+        "SIZDIRMAZ: her durumda aynıdır. IP başına ve adres başına saatlik sınır vardır."
+    ),
+    tags=["auth"],
+)
+async def resend_verification(
+    body: ResendVerificationRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    if not body.email and not body.token:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "email_or_token_required",
+                "message": "E-posta adresi ya da doğrulama bağlantısı gerekli.",
+            },
+        )
+    if not email_service.email_enabled():
+        raise _email_disabled_error()
+
+    user: Optional[User] = None
+    if body.token:
+        try:
+            payload = auth_service.decode_purpose_token(body.token, EMAIL_VERIFY_AUDIENCE, verify_exp=False)
+            user = await _get_user_by_id(db, payload.get("sub"))
+        except PurposeTokenError:
+            user = None
+    elif body.email:
+        user = await _get_user_by_email(db, body.email)
+
+    if (
+        user is not None
+        and getattr(user, "is_active", True)
+        and not user.is_verified
+        and await auth_service.allow_email_to_address("verify", user.email)
+    ):
+        background_tasks.add_task(
+            auth_service.send_verification_email,
+            email=user.email,
+            user_id=str(user.id),
+        )
+
+    return MessageResponse(message=RESEND_ACCEPTED_MESSAGE)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ENDPOINT: POST /auth/forgot-password — Şifre sıfırlama bağlantısı iste
+# ═══════════════════════════════════════════════════════════════════════════
+
+FORGOT_ACCEPTED_MESSAGE = (
+    "Bu adrese ait bir hesap varsa şifre sıfırlama bağlantısı gönderildi. "
+    "Gelen kutunuzu ve istenmeyen klasörünü kontrol edin."
+)
+
+
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Şifre sıfırlama bağlantısı iste",
+    description=(
+        "Hesap varsa e-postaya tek kullanımlık, süreli (PASSWORD_RESET_TOKEN_MINUTES, "
+        "varsayılan 30 dk) bir sıfırlama bağlantısı gönderir. Yanıt hesabın varlığını "
+        "SIZDIRMAZ ve gönderim arka planda yapıldığı için süresi de hesaba göre değişmez. "
+        "IP başına ve adres başına saatlik sınır vardır. E-posta kapalıysa 503."
+    ),
+    tags=["auth"],
+)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    if not email_service.email_enabled():
+        raise _email_disabled_error()
+
+    user = await _get_user_by_email(db, body.email)
+    if (
+        user is not None
+        and getattr(user, "is_active", True)
+        and await auth_service.allow_email_to_address("reset", user.email)
+    ):
+        background_tasks.add_task(auth_service.send_password_reset_email, user)
+
+    return MessageResponse(message=FORGOT_ACCEPTED_MESSAGE)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ENDPOINT: POST /auth/reset-password — Yeni şifre belirle
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+    summary="Yeni şifre belirle",
+    description=(
+        "Sıfırlama token'ı ile şifreyi değiştirir. Token tek kullanımlıktır: şifre ve "
+        "oturum sürümü değiştiği anda geçersizleşir. Başarılı sıfırlama TÜM eski oturumları "
+        "(access + refresh token) geçersiz kılar ve e-postayı doğrulanmış sayar."
+    ),
+    tags=["auth"],
+)
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    try:
+        payload = auth_service.decode_purpose_token(body.token, PASSWORD_RESET_AUDIENCE)
+    except PurposeTokenError as exc:
+        raise _token_error(exc.reason, purpose="reset") from exc
+
+    user = await _get_user_by_id(db, payload.get("sub"))
+    if user is None or not getattr(user, "is_active", True):
+        raise _token_error("invalid", purpose="reset")
 
     try:
-        r = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-        user_id = await r.get(f"email:verify:{token}")
+        token_version = int(payload.get("tv", -1))
+    except (TypeError, ValueError):
+        token_version = -1
+    current_version = int(getattr(user, "session_version", 0) or 0)
+    fingerprint_ok = hmac.compare_digest(
+        str(payload.get("pwf", "")),
+        auth_service.password_fingerprint(user.hashed_password),
+    )
+    if token_version != current_version or not fingerprint_ok:
+        # Token daha önce kullanılmış ya da o tarihten beri şifre değişmiş
+        raise _token_error("invalid", purpose="reset")
 
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "error": "invalid_or_expired_token",
-                    "message": "Doğrulama bağlantısı geçersiz veya süresi dolmuş.",
-                },
-            )
+    # Kurallar token'dan SONRA: geçersiz bağlantıya şifre kuralı hatası gösterilmesin
+    auth_service.validate_password(body.new_password)
 
-        # Kullanıcıyı bul ve doğrula
-        stmt = select(User).where(User.id == user_id)
-        result = await db.execute(stmt)
-        user = result.scalar_one_or_none()
-
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "error": "user_not_found",
-                    "message": "Kullanıcı bulunamadı.",
-                },
-            )
-
-        user.is_verified = True
-        await db.commit()
-
-        # Token'ı sil (tek kullanımlık)
-        await r.delete(f"email:verify:{token}")
-        await r.aclose()
-
-        logger.info("Email doğrulandı: user_id=%s", user_id)
-
-        return MessageResponse(message="Email adresiniz başarıyla doğrulandı.")
-
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Email doğrulama hatası: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Email doğrulama sırasında bir hata oluştu.",
+    # Koşullu güncelleme: iki eşzamanlı istekten yalnızca biri sürümü ilerletebilir
+    result = await db.execute(
+        update(User)
+        .where(User.id == user.id, User.session_version == current_version)
+        .values(
+            hashed_password=auth_service.hash_password(body.new_password),
+            session_version=current_version + 1,
+            is_verified=True,
         )
+        .execution_options(synchronize_session=False)
+    )
+    if result.rowcount != 1:
+        await db.rollback()
+        raise _token_error("invalid", purpose="reset")
+    await db.commit()
+    await db.refresh(user)
+
+    # Kilitlenmiş girişleri aç: kullanıcı e-postasının sahibi olduğunu kanıtladı
+    await auth_service.clear_failed_attempts(user.email)
+    logger.info("Şifre sıfırlandı, eski oturumlar geçersiz: user_id=%s", user.id)
+
+    return MessageResponse(
+        message="Şifreniz güncellendi. Açık olan tüm oturumlarınız kapatıldı; yeni şifrenizle giriş yapın."
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -540,13 +813,17 @@ async def login(
     await auth_service.clear_failed_attempts(email_lower)
 
     # Token'ları oluştur
+    session_version = int(getattr(user, "session_version", 0) or 0)
     access_token = auth_service.create_access_token(
         user_id=str(user.id),
         role=user.role,
+        session_version=session_version,
     )
-    refresh_token = auth_service.create_refresh_token(user_id=str(user.id))
+    refresh_token = auth_service.create_refresh_token(
+        user_id=str(user.id), session_version=session_version
+    )
 
-    logger.info("Kullanıcı giriş yaptı: id=%s email=%s", user.id, user.email)
+    logger.info("Kullanıcı giriş yaptı: id=%s", user.id)
 
     return TokenResponse(
         access_token=access_token,
@@ -643,10 +920,22 @@ async def refresh_token(
             },
         )
 
+    # Şifre sıfırlamadan önce verilmiş refresh token yeni oturum açamaz
+    if session_revoked(payload, user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "session_revoked",
+                "message": "Oturumunuz sona erdi. Lütfen yeniden giriş yapın.",
+            },
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # Yeni access token oluştur
     new_access_token = auth_service.create_access_token(
         user_id=str(user.id),
         role=user.role,
+        session_version=int(getattr(user, "session_version", 0) or 0),
     )
 
     logger.info("Token yenilendi: user_id=%s", user.id)

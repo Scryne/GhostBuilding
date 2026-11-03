@@ -29,6 +29,10 @@ import type {
   VerificationSummary,
   ApiError,
   MyVerification,
+  VerifyEmailResponse,
+  ResendVerificationRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
 } from "./types";
 
 // ── Base URL ──────────────────────────────────────────────────────────────
@@ -211,11 +215,38 @@ export function getApiError(error: unknown): string {
       if (typeof data.detail === "object" && data.detail?.message) {
         return data.detail.message;
       }
+      // Şifre kuralı ihlali: { detail: { messages: [...] } }
+      const messages = (data.detail as { messages?: unknown } | undefined)?.messages;
+      if (Array.isArray(messages) && messages.length > 0) {
+        return messages.map(String).join(" ");
+      }
+    }
+    if (!error.response) {
+      return "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.";
     }
     return error.message;
   }
   if (error instanceof Error) return error.message;
   return "Bilinmeyen bir hata oluştu.";
+}
+
+/** Backend'in makine-okunur hata kodu (`detail.error` ya da kök `error`), yoksa null. */
+export function getApiErrorCode(error: unknown): string | null {
+  if (!axios.isAxiosError(error)) return null;
+  const data = error.response?.data as
+    | { error?: unknown; detail?: unknown }
+    | undefined;
+  if (!data) return null;
+  if (typeof data.detail === "object" && data.detail !== null) {
+    const code = (data.detail as { error?: unknown }).error;
+    if (typeof code === "string") return code;
+  }
+  return typeof data.error === "string" ? data.error : null;
+}
+
+/** HTTP durum kodu; ağ hatasında null. */
+export function getApiStatus(error: unknown): number | null {
+  return axios.isAxiosError(error) ? error.response?.status ?? null : null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -252,6 +283,24 @@ export const authApi = {
   /** PATCH /auth/me — Profil güncelle */
   updateProfile: (body: ProfileUpdateRequest) =>
     api.patch<UserProfile>("/auth/me", body).then((r) => r.data),
+
+  /** POST /auth/verify-email — E-posta doğrulama (token gövdede: erişim log'larına düşmez) */
+  verifyEmail: (token: string) =>
+    api.post<VerifyEmailResponse>("/auth/verify-email", { token }).then((r) => r.data),
+
+  /** POST /auth/resend-verification — Yeni doğrulama bağlantısı (hesap varlığını sızdırmaz) */
+  resendVerification: (body: ResendVerificationRequest) =>
+    api
+      .post<MessageResponse>("/auth/resend-verification", body)
+      .then((r) => r.data),
+
+  /** POST /auth/forgot-password — Şifre sıfırlama bağlantısı iste */
+  forgotPassword: (body: ForgotPasswordRequest) =>
+    api.post<MessageResponse>("/auth/forgot-password", body).then((r) => r.data),
+
+  /** POST /auth/reset-password — Tek kullanımlık bağlantıyla yeni şifre belirle */
+  resetPassword: (body: ResetPasswordRequest) =>
+    api.post<MessageResponse>("/auth/reset-password", body).then((r) => r.data),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

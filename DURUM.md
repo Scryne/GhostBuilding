@@ -3,11 +3,28 @@
 > **Ne bu dosya:** sertifika değil **envanter**. Ölçülen gerçek durum; "kapalı" ya da "yok" yazan
 > satır kusur değil, kayıt. Kapanış standardı: `ScryneOS/🎯 100-Command-Center/Kapanis-Standardi.md`
 
-**Ölçüm tarihi:** 2026-09-27 (bağımlılık ve temizlik: 2026-10-26; tarihsel kanıt: 2026-10-31; ML izi kanıtı: 2026-11-01; harita ilk boyaması ve ana parça: 2026-11-03)
+**Ölçüm tarihi:** 2026-09-27 (bağımlılık ve temizlik: 2026-10-26; tarihsel kanıt: 2026-10-31; ML izi kanıtı: 2026-11-01; harita ilk boyaması ve ana parça: 2026-11-03; e-posta ve şifre sıfırlama: 2026-11-03)
 **Tek cümle:** Üç resmî uydu kaynağını kalibre edilmiş tabana göre karşılaştıran motor uçtan uca
 çalışıyor; referans taramasında 20 tesisin 3'ü işaretlendi, 7 kontrol konumunun hiçbiri.
 
 ## Ne çalışıyor (ölçüldü)
+
+- **E-posta doğrulama ve şifre sıfırlama (2026-11-03):** SMTP (`smtplib`, STARTTLS/SSL/düz) ile gerçek gönderim;
+  `SMTP_HOST` yoksa uygulama çalışır, açılış log'u + `/health` (`email: disabled`) + kayıt yanıtı
+  (`email_delivery`) "kapalı" der, sıfırlama/yeniden gönderme 503. Bağlantılar `FRONTEND_URL` kökünden ve token
+  URL **parçasında** (`#token=`): nginx/Next erişim log'una ve Referer'a düşmez. Log'a adres ve token yazılmaz.
+  Token'lar ayrı `aud`'lu imzalı JWT (oturum token'ı olarak kullanılamaz); sıfırlama token'ı 30 dk, oturum
+  sürümü + şifre hash parmak izine bağlı → tek kullanımlık. Sıfırlama `users.session_version`'ı artırır (göç a3),
+  eski access/refresh token'ları `session_revoked` ile düşer. Unuttum/yeniden gönder yanıtı hesabın varlığını
+  sızdırmaz (gönderim arka planda), IP başına saatte 5 + adres başına saatte 3 (aşımda yanıt aynı, e-posta yok).
+  Ön yüz: `/auth/verify-email` (doğrulandı · zaten doğrulanmış · süresi dolmuş + tek tık yeniden gönder ·
+  geçersiz · bağlantısız), `/auth/forgot-password`, `/auth/reset-password`. Doğrulama: 47 yeni test (aiosmtpd
+  sahte sunucusuna gerçek SMTP konuşması; STARTTLS ve SMTPS `trustme` sertifikasıyla, doğrulama açık); uçtan uca
+  Playwright turu (SQLite + gerçek Redis + sahte SMTP + `next start`): kayıt → e-postadaki bağlantı → doğrulandı,
+  süresi dolmuş/geçersiz/yeniden gönder, unuttum → bağlantı → zayıf şifre reddi → sıfırlama → eski token 401,
+  eski şifre 401, yeni şifre 200, aynı bağlantı ikinci kez geçersiz; log'da 0 adres, 0 token.
+  Ölçülmedi: gerçek bir SMTP sağlayıcısıyla teslim (SPF/DKIM, istenmeyen klasörü) ve göçün PostGIS'li Postgres'te koşusu
+  (SQL'i `alembic --sql` ile üretildi: tek `ALTER TABLE … ADD COLUMN session_version INTEGER DEFAULT 0 NOT NULL`).
 
 - **ML bina izi kanıtı (2026-11-01):** bulgu sayfasında "Bağımsız sağlayıcı · Microsoft ML bina izleri" satırı.
   Karonun z9 dosyası diske önbelleklenir (akışla, yarım dosya bırakmadan), ML izleri karo kutusunda sayılır, OSM
@@ -16,7 +33,7 @@
   Gerçek veriyle duman: Kadıköy karosu 315 ML izi (deneyde 322: deney konuma ortalanmış ~0,009° kutu, ürün gerçek z16
   karo sınırı), pay %30,6, işaret yok; ilk üretim 27 sn, 48 MB önbellek. Kore/İran gibi ML dosyası olmayan bölgeler
   `no_coverage`. Görsel tur yapılmadı (yığın bu oturumda ayağa kaldırılmadı).
-- Backend: 243 test (2026-11-01; ML izi +16), ruff temiz, `pip-audit` 0 açık (python-jose → PyJWT, Pillow 13, FastAPI 0.141). 2026-10-26: Pillow
+- Backend: 290 test (2026-11-03; e-posta/sıfırlama +47; 2026-11-01: 243, ML izi +16), ruff temiz, `pip-audit` 0 açık (python-jose → PyJWT, Pillow 13, FastAPI 0.141). 2026-10-26: Pillow
   12.3.0'da 37 kayıt çıkmıştı → 13.0.0; ölü `api_key_provider` ve onun 11 testi kaldırıldı.
 - Frontend: Next 16.4.3 / React 19 / MapLibre 6; lint (0 hata), tip kontrolü, üretim derlemesi temiz;
   `npm audit` 0 açık (2026-10-26: next 16.3.6'daki kritik RCE ve sharp/zod/follow-redirects kapandı).

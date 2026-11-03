@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // LoginForm — Email + şifre ile giriş
-// react-hook-form + zod validasyon, "Beni Hatırla", şifremi unuttum (devre dışı)
+// react-hook-form + zod validasyon, "Beni Hatırla", şifremi unuttum (/auth/forgot-password)
 // ═══════════════════════════════════════════════════════════════════════════
 
 "use client";
@@ -70,16 +70,6 @@ export default function LoginForm() {
         err instanceof Error ? err.message : "Giriş başarısız oldu.";
       setApiError(message);
     }
-  };
-
-  // ── Şifremi Unuttum ────────────────────────────────────────────────────
-
-  const handleForgotPassword = (e: React.MouseEvent) => {
-    e.preventDefault();
-    toast.info("Şifre sıfırlama henüz aktif değil", {
-      description:
-        "Bu özellik yakında kullanıma sunulacak. Lütfen daha sonra tekrar deneyin.",
-    });
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -230,13 +220,12 @@ export default function LoginForm() {
             </span>
           </label>
 
-          <button
-            type="button"
-            onClick={handleForgotPassword}
+          <Link
+            href="/auth/forgot-password"
             className="text-xs text-secondary/70 hover:text-secondary transition-colors"
           >
             Şifremi unuttum
-          </button>
+          </Link>
         </div>
 
         {/* Giriş Butonu */}
