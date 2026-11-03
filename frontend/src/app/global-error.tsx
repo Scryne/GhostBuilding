@@ -7,7 +7,6 @@
  * Sentry'ye otomatik raporlama yapılır.
  */
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 export default function GlobalError({
@@ -18,8 +17,11 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Hatayı Sentry'ye raporla
-    Sentry.captureException(error);
+    // Hatayı Sentry'ye raporla. SDK yalnız DSN varken ve yalnız hata anında yüklenir;
+    // statik import onu her sayfanın ana parçasına koyuyordu (instrumentation-client.ts).
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      void import("@sentry/nextjs").then((Sentry) => Sentry.captureException(error));
+    }
   }, [error]);
 
   return (

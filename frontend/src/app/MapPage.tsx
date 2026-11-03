@@ -1,11 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AnomalyDetailPanel } from "@/components/anomaly";
 import MapChrome from "@/components/map/MapChrome";
 import MapControls from "@/components/map/MapControls";
 import { MapStateProvider, useMapContext } from "@/components/map/MapState";
-import ScanProgressToast from "@/components/map/ScanProgressToast";
 
 // Kabuk (üst çubuk, paneller, kontroller) harita bağlamıyla birlikte sunucuda render edilir;
 // MapLibre bağlamdan ayrıdır. Harita tuvali ve maplibre-gl ayrı bir parça olarak, yalnız
@@ -21,6 +19,12 @@ const GhostMap = dynamic(() => import("@/components/map/GhostMap"), {
     </div>
   ),
 });
+
+// Bulgu paneli (kanıt görünümü, sağlayıcı karşılaştırması, next/image) ve tarama bildirimi
+// yalnız ?a= / tarama varken çizilir; kabuğun ana parçasında ayrıştırılmasınlar diye ayrı
+// parçadır. Panel zaten kendi verisini beklerken yükleniyor göstergesi çizer.
+const AnomalyDetailPanel = dynamic(() => import("@/components/anomaly/AnomalyDetailPanel"));
+const ScanProgressToast = dynamic(() => import("@/components/map/ScanProgressToast"));
 
 export default function MapPage() {
   return (

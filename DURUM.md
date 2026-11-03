@@ -3,7 +3,7 @@
 > **Ne bu dosya:** sertifika değil **envanter**. Ölçülen gerçek durum; "kapalı" ya da "yok" yazan
 > satır kusur değil, kayıt. Kapanış standardı: `ScryneOS/🎯 100-Command-Center/Kapanis-Standardi.md`
 
-**Ölçüm tarihi:** 2026-09-27 (bağımlılık ve temizlik: 2026-10-26; tarihsel kanıt: 2026-10-31; ML izi kanıtı: 2026-11-01; harita ilk boyaması: 2026-11-03)
+**Ölçüm tarihi:** 2026-09-27 (bağımlılık ve temizlik: 2026-10-26; tarihsel kanıt: 2026-10-31; ML izi kanıtı: 2026-11-01; harita ilk boyaması ve ana parça: 2026-11-03)
 **Tek cümle:** Üç resmî uydu kaynağını kalibre edilmiş tabana göre karşılaştıran motor uçtan uca
 çalışıyor; referans taramasında 20 tesisin 3'ü işaretlendi, 7 kontrol konumunun hiçbiri.
 
@@ -38,9 +38,20 @@
   ağda tuvalin karo yükü ölçülmedi). Tarayıcı doğrulaması (Playwright, CARTO stili yerel stille taklit):
   mobil + masaüstü tuval çiziliyor, worker `/maplibre/maplibre-gl-worker.mjs` 200, `onLoad` çalışıyor,
   `?a=` bulgu panelini, `?z=` zoom'u açıyor, yakınlaştır düğmesi haritayı sürüyor, konsolda worker/hidrasyon hatası yok.
-- Lighthouse (mobil): harita 78–84/100/96/100 (2026-11-03, yukarıda; BP 96 = kapalı API ve ağsız ortamın
-  konsol hataları), keşfet 84/100/100/100 (perf/a11y/BP/SEO). Kalan harita maliyeti TBT: MapLibre'nin
-  ayrıştırılması ana iş parçacığında.
+- **Ana parça (2026-11-03, ikinci tur):** Sentry SDK'sı (Session Replay/rrweb dahil) `instrumentation-client.ts`
+  ve `global-error.tsx`'teki statik importla DSN tanımsızken bile her sayfanın ana parçasındaydı. Artık yalnız
+  `NEXT_PUBLIC_SENTRY_DSN` varken dinamik import (`src/lib/sentry-client.ts`). Bulgu paneli ve tarama bildirimi
+  `next/dynamic` ile ayrı parça. Ana sayfa HTML'inin başvurduğu JS 1,11 MB → 0,69 MB. Ölçüm (aynı makine, aynı
+  ağsız koşul, ana dal ile yeni derleme sırayla iç içe, Lighthouse 13.6 mobil): önce perf 90/86/90, TBT
+  410/550/410 ms; sonra perf 96/91/92, TBT 220/370/350 ms. Bu makinede ana dal TBT'si PR #1'deki 640–1000 ms'den
+  düşük çıktı (ilk ardışık turda 1390/540/400): mutlak sayılar makineye bağlı, karşılaştırılabilir olan fark.
+  Gerçek longtask toplamı (Playwright, CPU 4x, 7 koşu medyanı): 524 → 404 ms.
+  **Kalan maliyet ve sınırı:** en büyük tek görev MapLibre modülünün değerlendirilmesi (~300 ms simüle) ve
+  haritanın kurulması; sonra Next yönlendirici/hidrasyon. Haritayı `requestIdleCallback` ile ertelemek denendi:
+  longtask toplamı düşmedi (404 → 427 ms, gürültü içinde), uzun görev yalnız kayıyor; değişiklik alınmadı.
+- Lighthouse (mobil): harita 91–96 perf (2026-11-03, yukarıda; önceki tur 78–84/100/96/100, BP 96 = kapalı API
+  ve ağsız ortamın konsol hataları), keşfet 84/100/100/100 (perf/a11y/BP/SEO; Sentry ayrımı sonrası yeniden
+  ölçülmedi).
 - CI: backend (ruff, pytest, pip-audit), frontend (lint, tip, build, npm audit), Docker imajları.
 
 ## Kapalı / yok (bilerek)
