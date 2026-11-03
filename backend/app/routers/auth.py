@@ -1167,6 +1167,8 @@ async def update_me(
 
         # Yeni şifreyi hash'le
         current_user.hashed_password = auth_service.hash_password(body.new_password)
+        # Şifre değişince, sıfırlamadaki gibi eski oturumların hepsi düşer.
+        current_user.session_version = int(current_user.session_version or 0) + 1
         updated = True
 
     if not updated:

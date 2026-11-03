@@ -273,6 +273,43 @@ async def test_update_password(client: AsyncClient, test_user, user_token):
 
 
 @pytest.mark.asyncio
+async def test_update_password_revokes_old_sessions(client: AsyncClient):
+    """Şifre değişince eski token 401 session_revoked almalı, yeni giriş çalışmalı."""
+    # Paylaşılan test_user'ın parolası önceki testte değişiyor; kendi kullanıcısını açar.
+    eposta = "oturum-kapanir@ghostbuilding.io"
+    kayit = await client.post(
+        "/api/v1/auth/register",
+        json={"email": eposta, "username": "oturum_kapanir", "password": "EskiParola1"},
+    )
+    assert kayit.status_code == 201
+    giris = await client.post(
+        "/api/v1/auth/login", json={"email": eposta, "password": "EskiParola1"}
+    )
+    assert giris.status_code == 200
+    eski = giris.json()["access_token"]
+
+    response = await client.patch(
+        "/api/v1/auth/me",
+        headers=auth_header(eski),
+        json={"current_password": "EskiParola1", "new_password": "YeniParola2"},
+    )
+    assert response.status_code == 200
+
+    response = await client.get("/api/v1/auth/me", headers=auth_header(eski))
+    assert response.status_code == 401
+    assert response.json()["detail"]["error"] == "session_revoked"
+
+    giris = await client.post(
+        "/api/v1/auth/login", json={"email": eposta, "password": "YeniParola2"}
+    )
+    assert giris.status_code == 200
+    response = await client.get(
+        "/api/v1/auth/me", headers=auth_header(giris.json()["access_token"])
+    )
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_update_password_wrong_current(client: AsyncClient, test_user, user_token):
     """Yanlış mevcut şifre ile değiştirme 401 dönmeli."""
     response = await client.patch(

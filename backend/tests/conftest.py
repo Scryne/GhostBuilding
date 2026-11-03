@@ -382,6 +382,8 @@ async def user_token(test_user: TestUser) -> str:
     return AuthService.create_access_token(
         user_id=str(test_user.id),
         role=test_user.role,
+        # Yeni giriş gibi güncel sürümü taşır: paylaşılan kullanıcının parolası önceki testte değişmiş olabilir.
+        session_version=int(test_user.session_version or 0),
     )
 
 
