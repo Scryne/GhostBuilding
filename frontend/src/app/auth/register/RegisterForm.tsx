@@ -9,7 +9,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -127,7 +127,7 @@ export default function RegisterForm() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -139,7 +139,7 @@ export default function RegisterForm() {
     },
   });
 
-  const watchedPassword = watch("password");
+  const watchedPassword = useWatch({ control, name: "password" });
   const passwordStrength = useMemo(
     () => calculatePasswordStrength(watchedPassword || ""),
     [watchedPassword]
@@ -289,7 +289,8 @@ export default function RegisterForm() {
             />
             <button
               type="button"
-              tabIndex={-1}
+              aria-label={showPassword ? "Parolayı gizle" : "Parolayı göster"}
+              aria-pressed={showPassword}
               onClick={() => setShowPassword((p) => !p)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
             >
@@ -359,7 +360,8 @@ export default function RegisterForm() {
             />
             <button
               type="button"
-              tabIndex={-1}
+              aria-label={showConfirm ? "Parolayı gizle" : "Parolayı göster"}
+              aria-pressed={showConfirm}
               onClick={() => setShowConfirm((p) => !p)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
             >
