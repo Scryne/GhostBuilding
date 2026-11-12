@@ -10,7 +10,7 @@ colors:
   border: "#2A2D38"
   foreground: "#F0F2F5"
   muted: "#8B8FA3"
-  muted-foreground: "#80859A"
+  muted-foreground: "#8B90A5"
   secondary: "#4A7CF7"
   accent: "#E63946"
   censored: "#F4C95D"

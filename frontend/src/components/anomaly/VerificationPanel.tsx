@@ -32,7 +32,7 @@ const VOTE_CONFIG: Record<
     label: "ONAYLA",
     icon: "✓",
     color: "text-emerald-400",
-    bgColor: "bg-emerald-500/8",
+    bgColor: "bg-emerald-500/[0.08]",
     borderColor: "border-emerald-500/20",
     hoverBg: "hover:bg-emerald-500/15",
     glowColor: "rgba(16, 185, 129, 0.3)",
@@ -41,7 +41,7 @@ const VOTE_CONFIG: Record<
     label: "REDDET",
     icon: "✕",
     color: "text-red-400",
-    bgColor: "bg-red-500/8",
+    bgColor: "bg-red-500/[0.08]",
     borderColor: "border-red-500/20",
     hoverBg: "hover:bg-red-500/15",
     glowColor: "rgba(239, 68, 68, 0.3)",
@@ -50,7 +50,7 @@ const VOTE_CONFIG: Record<
     label: "EMİN DEĞİLİM",
     icon: "?",
     color: "text-yellow-400",
-    bgColor: "bg-yellow-500/8",
+    bgColor: "bg-yellow-500/[0.08]",
     borderColor: "border-yellow-500/20",
     hoverBg: "hover:bg-yellow-500/15",
     glowColor: "rgba(234, 179, 8, 0.3)",
@@ -250,7 +250,7 @@ export default function VerificationPanel({
                     rows={2}
                     className={cn(
                       "w-full px-3 py-2 rounded-lg text-xs",
-                      "bg-white/[0.03] border border-white/8 text-gray-200",
+                      "bg-white/[0.03] border border-white/10 text-gray-200",
                       "placeholder:text-gray-600 resize-none",
                       "focus:outline-none focus:ring-1 focus:ring-secondary/40",
                       "transition-all duration-200"

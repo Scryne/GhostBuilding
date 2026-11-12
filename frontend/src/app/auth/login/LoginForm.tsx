@@ -168,7 +168,8 @@ export default function LoginForm() {
             />
             <button
               type="button"
-              tabIndex={-1}
+              aria-label={showPassword ? "Parolayı gizle" : "Parolayı göster"}
+              aria-pressed={showPassword}
               onClick={() => setShowPassword((p) => !p)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
             >

@@ -101,7 +101,7 @@ const config: Config = {
         // ── Semantic ──────────────────────────────────────────────────
         foreground: "#F0F2F5",
         muted: "#8B8FA3",
-        "muted-foreground": "#80859A",
+        "muted-foreground": "#8B90A5",
 
         // ── Status Colors ─────────────────────────────────────────────
         success: {
