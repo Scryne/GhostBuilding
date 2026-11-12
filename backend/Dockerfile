@@ -7,8 +7,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# System dependencies for PostgreSQL, OpenCV headless, GDAL
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# System dependencies for PostgreSQL, OpenCV headless, GDAL.
+# upgrade: taban imaj güvenlik yamalarının gerisinde kalabiliyor (2026-11-09 Trivy:
+# zlib1g CVE-2026-76844/85091, düzeltmesi deb13u1'de); paketler imaj kurulurken yamalanır.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
     libpq-dev \
     gcc \
     g++ \

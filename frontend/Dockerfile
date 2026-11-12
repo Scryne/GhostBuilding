@@ -35,8 +35,10 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Non-root user. Çalışma zamanı yalnız `node server.js`: taban imajın npm/npx/corepack'i
-# kullanılmıyor, içindeki paketler (brace-expansion) Trivy'yi kırıyordu.
-RUN addgroup --system --gid 1001 nodejs && \
+# kullanılmıyor, içindeki paketler (brace-expansion) Trivy'yi kırıyordu. apk upgrade: taban
+# imajın gerisinde kalan OS yamaları (backend'deki zlib1g olayıyla aynı neden).
+RUN apk upgrade --no-cache && \
+    addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs && \
     rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
            /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
