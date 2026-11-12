@@ -173,7 +173,11 @@ async def test_engine():
 
 @pytest_asyncio.fixture
 async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Per-test async DB session with automatic rollback."""
+    """Per-test async DB session; test başına temiz tablolar.
+
+    Rollback tek başına yetmez: router ve servisler commit eder, bellek içi
+    veritabanı oturum boyu yaşar ve bir testin kaydı sonrakine sızar.
+    """
     session_factory = async_sessionmaker(
         bind=test_engine,
         class_=AsyncSession,
@@ -184,6 +188,10 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
     async with session_factory() as session:
         yield session
         await session.rollback()
+
+    async with test_engine.begin() as conn:
+        for tablo in reversed(TestBase.metadata.sorted_tables):
+            await conn.execute(tablo.delete())
 
 
 # ---------------------------------------------------------------------------
