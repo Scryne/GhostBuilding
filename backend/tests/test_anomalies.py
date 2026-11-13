@@ -373,3 +373,23 @@ async def test_tile_compare(client: AsyncClient):
     assert "provider_images" in data
     assert "diff_scores" in data
     assert "anomaly_indicators" in data
+
+
+def test_updated_at_her_guncellemede_o_ani_yazar():
+    """onupdate bir değer değil çağrılabilir olmalı.
+
+    Eskiden `onupdate=datetime.now(timezone.utc)` modül yüklendiği anı bir kez hesaplıyordu;
+    her güncelleme updated_at'e sürecin açılış zamanını yazıyordu.
+    """
+    import time
+    from datetime import datetime, timezone
+
+    from app.models.anomaly import Anomaly
+
+    onupdate = Anomaly.__table__.c.updated_at.onupdate
+    assert onupdate.is_callable
+    ilk = onupdate.arg(None)
+    time.sleep(0.01)
+    ikinci = onupdate.arg(None)
+    assert ikinci > ilk
+    assert abs((datetime.now(timezone.utc) - ikinci).total_seconds()) < 5

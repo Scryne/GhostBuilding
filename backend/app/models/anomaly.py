@@ -33,7 +33,7 @@ class Anomaly(Base):
     meta_data = Column(JSONB, default=dict) # Avoid 'metadata' conflict
     
     created_at = Column(DateTime(timezone=True), server_default=text('now()'))
-    updated_at = Column(DateTime(timezone=True), server_default=text('now()'), onupdate=datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=text('now()'), onupdate=lambda: datetime.now(timezone.utc))  # çağrılabilir: her güncellemede o anki zaman
 
     images = relationship("AnomalyImage", back_populates="anomaly", cascade="all, delete-orphan")
     verifications = relationship("Verification", back_populates="anomaly", cascade="all, delete-orphan")
