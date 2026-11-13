@@ -1065,3 +1065,27 @@ class TestVerificationCommentSanitization:
             comment="A" * 2000,
         )
         assert len(req.comment) == 2000
+
+
+@pytest.mark.asyncio
+async def test_hiz_siniri_429_cors_basligi_tasir(client):
+    """429 yanıtı CORS başlığıyla döner; yoksa tarayıcı onu okuyamaz, ön yüz "sunucuya ulaşılamadı" der.
+
+    CORS ara katmanı hız sınırının içinde kalınca 429 başlıksız çıkıyordu (2026-11-13, yerel gezide görüldü).
+    """
+    from app.config import settings
+
+    origin = settings.ALLOWED_ORIGINS[0]
+    with patch("app.middleware.rate_limiter.check_rate_limit", AsyncMock(return_value=(False, 0, 60, 3))):
+        response = await client.get("/api/v1/anomalies/stats", headers={"Origin": origin})
+        preflight = await client.options(
+            "/api/v1/anomalies/stats",
+            headers={"Origin": origin, "Access-Control-Request-Method": "GET"},
+        )
+
+    assert response.status_code == 429
+    assert response.headers.get("access-control-allow-origin") == origin
+    assert response.headers.get("retry-after") == "3"
+    # Ön uçuş isteği hız sınırına takılmaz, CORS katmanında cevaplanır.
+    assert preflight.status_code == 200
+    assert preflight.headers.get("access-control-allow-origin") == origin

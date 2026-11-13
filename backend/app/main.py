@@ -116,7 +116,21 @@ app = FastAPI(
 # Middleware Stack (reverse order — last added = first executed)
 # ═══════════════════════════════════════════════════════════════════════════
 
-# 1. CORS Middleware
+# 1. Rate Limiting Middleware (en içte: 429 da güvenlik başlıklarını alır)
+app.add_middleware(RateLimitMiddleware)
+
+# 2. Security Headers Middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. Request Logging Middleware (structlog — request_id, user_id binding)
+app.add_middleware(RequestLoggingMiddleware)
+
+# 4. Prometheus Metrics Middleware
+app.add_middleware(PrometheusMiddleware)
+
+# 5. CORS Middleware: en son eklenir, yani en dışta çalışır. Böylece hız sınırının
+#    429 yanıtı ve tarayıcının ön uçuş (OPTIONS) isteği de CORS başlığını taşır;
+#    aksi hâlde tarayıcı 429'u okuyamaz ve ön yüz "sunucuya ulaşılamadı" der.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -125,18 +139,6 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "Retry-After", "X-Request-ID"],
 )
-
-# 2. Security Headers Middleware
-app.add_middleware(SecurityHeadersMiddleware)
-
-# 3. Rate Limiting Middleware
-app.add_middleware(RateLimitMiddleware)
-
-# 4. Request Logging Middleware (structlog — request_id, user_id binding)
-app.add_middleware(RequestLoggingMiddleware)
-
-# 5. Prometheus Metrics Middleware
-app.add_middleware(PrometheusMiddleware)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Prometheus /metrics endpoint (outside API versioning)
