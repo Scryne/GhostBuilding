@@ -7,7 +7,16 @@
 "use client";
 
 import { RotateCcw, SlidersHorizontal } from "lucide-react";
-import { BASELINE_P99_SCORE, CATEGORY_COLORS, CATEGORY_LABELS, STATUS_COLORS, cn } from "@/lib/utils";
+import {
+  BASELINE_P99_SCORE,
+  CATEGORY_COLORS,
+  CATEGORY_LABELS,
+  DETECTOR_CATEGORIES,
+  DETECTOR_OFF_HINT,
+  STATUS_COLORS,
+  cn,
+} from "@/lib/utils";
+import { useAnomalyStats } from "@/hooks/useAnomaly";
 import { AnomalyCategory, AnomalyStatus } from "@/lib/types";
 
 export interface ExploreFilters {
@@ -51,6 +60,8 @@ function toggle<T>(set: Set<T>, value: T): Set<T> {
 }
 
 export default function FilterPanel({ filters, onFiltersChange, className }: FilterPanelProps) {
+  const { data: stats } = useAnomalyStats();
+  const detectorOff = stats?.building_detector_enabled === false;
   const isDefault =
     filters.minConfidence === 0 &&
     filters.categories.size === ALL_CATEGORIES.length &&
@@ -85,9 +96,24 @@ export default function FilterPanel({ filters, onFiltersChange, className }: Fil
               className="size-4 accent-secondary"
             />
             <span className={cn("size-2 rounded-full", CATEGORY_COLORS[cat].dot)} aria-hidden />
-            <span className="text-foreground">{CATEGORY_LABELS[cat]}</span>
+            <span className={cn("flex-1", detectorOff && DETECTOR_CATEGORIES.has(cat) ? "text-muted" : "text-foreground")}>
+              {CATEGORY_LABELS[cat]}
+            </span>
+            {detectorOff && DETECTOR_CATEGORIES.has(cat) && (
+              <span
+                className="rounded border border-white/10 px-1.5 py-px text-[10px] font-medium text-muted"
+                title={DETECTOR_OFF_HINT}
+              >
+                Kapalı
+              </span>
+            )}
           </label>
         ))}
+        {detectorOff && (
+          <p className="px-2 pt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Hayalet ve gizli yapı, bina dedektörüyle çalışır; bu kurulumda kapalı.
+          </p>
+        )}
       </fieldset>
 
       <div className="mt-5">

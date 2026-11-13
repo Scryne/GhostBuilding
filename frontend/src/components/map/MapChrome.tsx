@@ -30,6 +30,8 @@ import {
   cn,
   formatRelativeTime,
   formatScore,
+  DETECTOR_CATEGORIES,
+  DETECTOR_OFF_HINT,
 } from "@/lib/utils";
 import { AnomalyCategory, AnomalyStatus, type AnomalyListItem } from "@/lib/types";
 
@@ -39,14 +41,6 @@ const CATEGORY_ORDER: AnomalyCategory[] = [
   AnomalyCategory.GHOST_BUILDING,
   AnomalyCategory.HIDDEN_STRUCTURE,
 ];
-
-/** Yalnız bina dedektörünün ürettiği kategoriler (ağırlık yoksa hiç dolmaz). */
-const DETECTOR_CATEGORIES = new Set<AnomalyCategory>([
-  AnomalyCategory.GHOST_BUILDING,
-  AnomalyCategory.HIDDEN_STRUCTURE,
-]);
-const DETECTOR_OFF_HINT =
-  "Bina dedektörü bu kurulumda kapalı: hava görüntüsü için eğitilmiş ağırlık tanımlı değil.";
 
 interface SearchHit {
   label: string;
@@ -75,7 +69,7 @@ export default function MapChrome() {
       <button
         type="button"
         onClick={() => setSheetOpen(true)}
-        className="map-overlay bottom-20 left-1/2 -translate-x-1/2 glass-panel-strong flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-foreground md:hidden"
+        className="map-overlay bottom-20 left-1/2 -translate-x-1/2 glass-panel-strong flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium text-foreground md:hidden"
       >
         <ListFilter className="size-4 text-secondary" aria-hidden /> Katmanlar ve bulgular
       </button>

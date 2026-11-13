@@ -340,3 +340,11 @@ export function truncate(str: string, maxLength: number): string {
   if (str.length <= maxLength) return str;
   return str.slice(0, maxLength) + "…";
 }
+
+/** Yalnız bina dedektörünün ürettiği kategoriler; ağırlık tanımsız kurulumda hiç dolmaz. */
+export const DETECTOR_CATEGORIES: ReadonlySet<AnomalyCategory> = new Set([
+  AnomalyCategory.GHOST_BUILDING,
+  AnomalyCategory.HIDDEN_STRUCTURE,
+]);
+export const DETECTOR_OFF_HINT =
+  "Bina dedektörü bu kurulumda kapalı: hava görüntüsü için eğitilmiş ağırlık tanımlı değil.";
