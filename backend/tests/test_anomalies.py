@@ -284,6 +284,19 @@ async def test_get_stats(client: AsyncClient, test_anomaly):
     assert "top_10" in data
     assert "region_distribution" in data
     assert data["total_count"] >= 1
+    # Ağırlık tanımsız: arayüz bina dedektörü kategorilerini "kapalı" gösterir.
+    assert data["building_detector_enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_stats_dedektor_acikken_bildirir(client: AsyncClient, monkeypatch):
+    """Ağırlık yolu tanımlıysa istatistik yanıtı dedektörü açık bildirir."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "BUILDING_DETECTOR_WEIGHTS", "/agirlik/bina.pt")
+    response = await client.get("/api/v1/anomalies/stats")
+    assert response.status_code == 200
+    assert response.json()["building_detector_enabled"] is True
 
 
 @pytest.mark.asyncio

@@ -449,6 +449,13 @@ class StatsResponse(BaseModel):
     region_distribution: List[RegionDistribution] = Field(
         default_factory=list, description="Ülke/bölge dağılımı"
     )
+    building_detector_enabled: bool = Field(
+        False,
+        description=(
+            "Bina dedektörü (GHOST_BUILDING / HIDDEN_STRUCTURE kategorileri) bu kurulumda açık mı. "
+            "Kapalıyken bu iki kategoride bulgu üretilmez."
+        ),
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -880,6 +887,7 @@ async def get_anomaly_stats(
         last_30_days_count=last_30_days_count,
         top_10=top_10,
         region_distribution=region_distribution,
+        building_detector_enabled=bool(settings.BUILDING_DETECTOR_WEIGHTS),
     )
 
 

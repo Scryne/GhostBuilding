@@ -260,6 +260,8 @@ export interface StatsResponse {
   last_30_days_count: number;
   top_10: TopAnomaly[];
   region_distribution: RegionDistribution[];
+  /** Bina dedektörü açık mı; kapalıyken GHOST_BUILDING / HIDDEN_STRUCTURE bulgusu üretilmez. */
+  building_detector_enabled?: boolean;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────

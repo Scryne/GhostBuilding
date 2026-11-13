@@ -40,6 +40,14 @@ const CATEGORY_ORDER: AnomalyCategory[] = [
   AnomalyCategory.HIDDEN_STRUCTURE,
 ];
 
+/** Yalnız bina dedektörünün ürettiği kategoriler (ağırlık yoksa hiç dolmaz). */
+const DETECTOR_CATEGORIES = new Set<AnomalyCategory>([
+  AnomalyCategory.GHOST_BUILDING,
+  AnomalyCategory.HIDDEN_STRUCTURE,
+]);
+const DETECTOR_OFF_HINT =
+  "Bina dedektörü bu kurulumda kapalı: hava görüntüsü için eğitilmiş ağırlık tanımlı değil.";
+
 interface SearchHit {
   label: string;
   lat: number;
@@ -302,9 +310,15 @@ function PanelBody({ onPick }: { onPick?: () => void }) {
           {CATEGORY_ORDER.map((cat) => {
             const on = activeCategories.has(cat);
             const count = counts.get(cat) ?? 0;
+            // Bina dedektörü ağırlığı olmayan kurulumda bu iki kategori hiç dolmaz: "0" yerine nedeni söylenir.
+            const detectorOff =
+              stats?.building_detector_enabled === false && DETECTOR_CATEGORIES.has(cat) && count === 0;
             return (
               <li key={cat}>
-                <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+                <label
+                  className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs hover:bg-white/[0.04]"
+                  title={detectorOff ? DETECTOR_OFF_HINT : undefined}
+                >
                   <input
                     type="checkbox"
                     checked={on}
@@ -312,13 +326,26 @@ function PanelBody({ onPick }: { onPick?: () => void }) {
                     className="size-3.5 accent-secondary"
                   />
                   <span className={cn("size-2 rounded-full", CATEGORY_COLORS[cat].dot)} aria-hidden />
-                  <span className={cn("flex-1", on ? "text-foreground" : "text-muted")}>{CATEGORY_LABELS[cat]}</span>
-                  <span className="font-mono tabular-nums text-muted">{count}</span>
+                  <span className={cn("flex-1", on && !detectorOff ? "text-foreground" : "text-muted")}>
+                    {CATEGORY_LABELS[cat]}
+                  </span>
+                  {detectorOff ? (
+                    <span className="rounded border border-white/10 px-1.5 py-px text-[10px] font-medium text-muted">
+                      Kapalı
+                    </span>
+                  ) : (
+                    <span className="font-mono tabular-nums text-muted">{count}</span>
+                  )}
                 </label>
               </li>
             );
           })}
         </ul>
+        {stats?.building_detector_enabled === false && (
+          <p className="mt-1.5 px-2 text-[10px] leading-relaxed text-muted-foreground">
+            Hayalet ve gizli yapı, bina dedektörüyle çalışır; bu kurulumda kapalı.
+          </p>
+        )}
       </section>
 
       {/* Puan eşiği */}
