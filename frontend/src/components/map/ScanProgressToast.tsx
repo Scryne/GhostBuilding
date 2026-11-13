@@ -6,6 +6,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useSWRConfig } from "swr";
 import { Radar, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useScanStatus } from "@/hooks/useAnomaly";
 import { useMapContext } from "./MapState";
@@ -21,7 +22,8 @@ interface ScanProgressToastProps {
 }
 
 export default function ScanProgressToast({ taskId }: ScanProgressToastProps) {
-  const { setActiveScanTaskId } = useMapContext();
+  const { setActiveScanTaskId, setSelectedAnomalyId } = useMapContext();
+  const { mutate } = useSWRConfig();
 
   const {
     data,
@@ -40,11 +42,30 @@ export default function ScanProgressToast({ taskId }: ScanProgressToastProps) {
 
     if (isComplete && data) {
       notifiedRef.current = true;
-      toast.success("Tarama tamamlandı!", {
-        description: `${data.anomaly_count ?? 0} anomali tespit edildi.`,
-      });
-      // 3 saniye sonra toast'u kaldır
-      setTimeout(() => setActiveScanTaskId(null), 3000);
+      // Harita katmanı, son bulgular ve sayaçlar kendi aralıklarıyla (15–60 sn) yenilenir;
+      // yeni bulgu tarama biter bitmez görünsün diye hepsi şimdi yeniden çekilir.
+      void mutate(
+        (key) =>
+          key === "anomaly-stats" || (Array.isArray(key) && key[0] === "anomalies")
+      );
+      const firstId = data.anomaly_urls?.[0]?.split("/").pop();
+      const count = data.anomaly_urls?.length ?? 0;
+      if (firstId) {
+        // İlk bulgunun kanıt paneli açılır: tarayan kişi sonucu aramak zorunda kalmaz.
+        setSelectedAnomalyId(firstId);
+        toast.success("Tarama tamamlandı", {
+          description:
+            count > 1
+              ? `${count} bulgu kaydedildi. İlki sağdaki panelde açık.`
+              : "Bir bulgu kaydedildi. Kanıtı sağdaki panelde açık.",
+        });
+      } else {
+        toast.success("Tarama tamamlandı", {
+          description:
+            "Bu konumdaki fark sıradan konumların içinde kaldı; bulgu kaydedilmedi.",
+        });
+      }
+      setTimeout(() => setActiveScanTaskId(null), 1500);
     }
 
     if (isFailed) {
@@ -54,7 +75,7 @@ export default function ScanProgressToast({ taskId }: ScanProgressToastProps) {
       });
       setTimeout(() => setActiveScanTaskId(null), 3000);
     }
-  }, [isComplete, isFailed, data, setActiveScanTaskId]);
+  }, [isComplete, isFailed, data, setActiveScanTaskId, setSelectedAnomalyId, mutate]);
 
   // ── Durum ikonu ─────────────────────────────────────────────────────
 
@@ -77,8 +98,8 @@ export default function ScanProgressToast({ taskId }: ScanProgressToastProps) {
     : isFailed
     ? "Başarısız"
     : data?.status === "pending"
-    ? "Kuyrukta..."
-    : "Taranıyor...";
+    ? "Kuyrukta…"
+    : "Taranıyor…";
 
   // ── Progress bar rengi ──────────────────────────────────────────────
 
@@ -89,7 +110,11 @@ export default function ScanProgressToast({ taskId }: ScanProgressToastProps) {
     : "bg-secondary";
 
   return (
-    <div className="absolute top-4 right-4 z-30 pointer-events-auto w-[280px] animate-slide-in-right">
+    <div
+      role="status"
+      aria-live="polite"
+      className="absolute inset-x-3 top-20 z-30 pointer-events-auto animate-slide-in-right sm:inset-x-auto sm:right-4 sm:top-24 sm:w-[300px]"
+    >
       <div className="glass-panel-strong p-4 space-y-3">
         {/* Header */}
         <div className="flex items-center gap-2.5">
@@ -112,7 +137,8 @@ export default function ScanProgressToast({ taskId }: ScanProgressToastProps) {
           {/* Kapat butonu */}
           <button
             onClick={() => setActiveScanTaskId(null)}
-            className="p-1 rounded-md text-gray-600 hover:text-gray-400 hover:bg-white/5 transition-colors"
+            className="-m-1 p-2 rounded-md text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+            aria-label="Tarama bildirimini kapat"
             title="Kapat"
           >
             <svg
@@ -158,7 +184,7 @@ export default function ScanProgressToast({ taskId }: ScanProgressToastProps) {
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-mono text-gray-600 tabular-nums">
               {isComplete
-                ? `${data?.anomaly_count ?? 0} anomali bulundu`
+                ? `${data?.anomaly_urls?.length ?? 0} bulgu kaydedildi`
                 : isFailed
                 ? "Hata oluştu"
                 : `%${progress}`}

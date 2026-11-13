@@ -1193,10 +1193,11 @@ async def get_scan_status(task_id: str) -> ScanStatusResponse:
         if isinstance(task_result, dict):
             anomalies = task_result.get("anomalies", [])
             anomaly_count = len(anomalies)
+            # Yalnız veritabanına yazılmış bulgular: kimliksiz aday açılabilir bir adres değildir.
             anomaly_urls = [
-                f"/api/v1/anomalies/{a.get('id', 'unknown')}"
+                f"/api/v1/anomalies/{a['id']}"
                 for a in anomalies
-                if isinstance(a, dict)
+                if isinstance(a, dict) and a.get("id")
             ]
 
     return ScanStatusResponse(

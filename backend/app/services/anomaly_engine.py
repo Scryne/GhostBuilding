@@ -157,10 +157,13 @@ class AnomalyCandidate:
     provider_images: Dict[str, Image.Image] = field(default_factory=dict)
     diff_image: Optional[Image.Image] = None
     blur_heatmap: Optional[Image.Image] = None
+    # Veritabanına yazıldıktan sonra kaydın kimliği (yeni ya da güncellenen bulgu).
+    record_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Sözlük temsiline dönüştürür (görüntüler hariç)."""
         return {
+            "id": self.record_id,
             "category": self.category,
             "lat": round(self.lat, 6),
             "lng": round(self.lng, 6),
@@ -1095,6 +1098,7 @@ class AnomalyEngine:
                         existing = await self._find_existing(session, candidate)
                         if existing is not None:
                             await self._refresh_existing(session, existing, candidate, zoom)
+                            candidate.record_id = str(existing.id)
                             saved += 1
                             if not (existing.meta_data or {}).get("history"):
                                 self.saved_ids.append(str(existing.id))
@@ -1151,6 +1155,7 @@ class AnomalyEngine:
                                     provider_name, img_exc,
                                 )
 
+                        candidate.record_id = str(anomaly_id)
                         saved += 1
                         self.saved_ids.append(str(anomaly_id))
                         logger.info(

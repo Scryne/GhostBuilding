@@ -15,7 +15,9 @@ import {
 export function ToastProvider() {
   return (
     <Toaster
-      position="top-right"
+      // Üst çubuğun ve sağdaki bulgu panelinin altında kalmasın: ortada, çubuğun hemen altında.
+      position="top-center"
+      containerStyle={{ top: 84 }}
       gutter={8}
       toastOptions={{
         duration: 4000,

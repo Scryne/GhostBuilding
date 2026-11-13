@@ -186,6 +186,37 @@ async def test_scan_coordinate_returns_task_id(
 
 
 @pytest.mark.asyncio
+async def test_scan_status_yalniz_kayitli_bulgu_adresi(client: AsyncClient):
+    """Biten taramanın bulgu adresleri kaydın kimliğinden gelir; kimliksiz aday adres üretmez.
+
+    Eskiden aday sözlüğünde kimlik yoktu ve her bulgu "/anomalies/unknown" diye dönüyordu.
+    """
+    from app.services.anomaly_engine import AnomalyCandidate, ScoreBreakdown
+
+    kayitli = AnomalyCandidate(
+        category="CENSORED_AREA", lat=48.3, lng=-4.5, confidence_score=53.1,
+        title="t", description="d", score_breakdown=ScoreBreakdown(), record_id="abc-123",
+    )
+    yazilamayan = AnomalyCandidate(
+        category="IMAGE_DISCREPANCY", lat=48.3, lng=-4.5, confidence_score=60.0,
+        title="t", description="d", score_breakdown=ScoreBreakdown(),
+    )
+    assert kayitli.to_dict()["id"] == "abc-123"
+    assert yazilamayan.to_dict()["id"] is None
+
+    sonuc = MagicMock()
+    sonuc.state = "SUCCESS"
+    sonuc.result = {"anomalies": [kayitli.to_dict(), yazilamayan.to_dict()]}
+    with patch("app.tasks.celery_app.celery_app.AsyncResult", return_value=sonuc):
+        response = await client.get("/api/v1/anomalies/scan/gorev-1/status")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "complete"
+    assert data["anomaly_urls"] == ["/api/v1/anomalies/abc-123"]
+
+
+@pytest.mark.asyncio
 async def test_scan_girissiz_reddedilir(client: AsyncClient, mock_celery):
     """Tarama karo sunucularına ve MapTiler kotasına istek atar; anonim başlatılamaz."""
     response = await client.post(
