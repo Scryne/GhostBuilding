@@ -7,6 +7,25 @@
 **Tek cümle:** Üç resmî uydu kaynağını kalibre edilmiş tabana göre karşılaştıran motor uçtan uca
 çalışıyor; referans taramasında 20 tesisin 3'ü işaretlendi, 7 kontrol konumunun hiçbiri.
 
+## Bitirme denetimi (2026-11-13)
+
+- **Kırmızı kapandı:** haftalık güvenlik denetimi (Trivy) imajdaki OS paketlerinden düşüyordu → imaj kurulurken
+  paketler yamalanır (`6a17071`; yerelde Trivy yok, yeşil push sonrası görülecek). `npm audit` 0 (`37d6674`),
+  test sıra bağımlılığı (`c6a2ae2`), tanımsız Tailwind sınıfları + soluk metin kontrastı (`027d0bf`).
+- **Asıl akış arayüzden:** Île Longue taraması → bulgu 53,1 → panel kendiliğinden açıldı, üç sağlayıcı karosu yan
+  yana (`88bd6ed`); kontrol Kadıköy → 0 bulgu, "bulgu kaydedilmedi" bildirimi. Gerçek ağda CARTO karoları çiziliyor.
+- **Parola sıfırlama uçtan uca** (sahte SMTP) yeniden geçti: eski token/şifre 401, yeni 200, bağlantı tek kullanımlık.
+- **Bulunan ve düzeltilen:** 429 yanıtında CORS başlığı yoktu, ön yüz "sunucuya ulaşılamadı" diyordu; OPTIONS
+  istekleri sınırdan sayılıyordu (`6831545`, +test). Kapalı bina dedektörü kategorileri listede ve Keşfet
+  süzgecinde "Kapalı" rozetiyle (`bc50fea`, `f0489b4`). Hata iletileri Türkçe (`94b5659`). Bulgu `updated_at`
+  güncellenmiyordu (`b11feea`); saat dilimi eksiz API zamanı UTC okunur (`2a09b64`).
+- **Ölçüm:** backend 294 test geçti, ruff temiz; ön yüz tsc 0, eslint 0.
+- **Gezi:** anonim 11 rota × 390/768/1280/1440, koyu (tek tema): 0 taşma, 0 konsol hatası (404 sayfası beklenen 404).
+  Oturumlu ekranlar (profil, oy) 429 düzeltmesinden sonra yeniden gezilmedi.
+- **Denenmedi:** `a3` göçünün PostGIS'li Postgres'te koşusu (bu turda yerel PG'de denenmedi).
+- **Kareler:** `_portfolyo/ekranlar/GhostBuilding/2026-11/` (kapak, harita-bulgu-paneli, bulgu-kanit, yillar-icinde, kesfet-bulgular).
+- **Karar sorusu:** genel API sınırı IP başına 60/dk; harita açılışı ~6-8 istek atıyor, hızlı gezen kullanıcı sınıra değebilir.
+
 ## Ne çalışıyor (ölçüldü)
 
 - **E-posta doğrulama ve şifre sıfırlama (2026-11-03):** SMTP (`smtplib`, STARTTLS/SSL/düz) ile gerçek gönderim;
