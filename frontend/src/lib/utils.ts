@@ -8,13 +8,22 @@ import { AnomalyCategory, AnomalyStatus, VerificationVote } from "./types";
 // ── Tarih Formatlama ──────────────────────────────────────────────────────
 
 /**
+ * API zamanlarını Date'e çevirir. Sunucu her zaman UTC yazar; saat dilimi eki olmayan
+ * ("2026-11-12T22:48:00") bir değer tarayıcıda yerel saat sanılıp saatlerce kayıyordu.
+ */
+export function parseApiDate(isoDate: string): Date {
+  const hasZone = /(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(isoDate);
+  return new Date(isoDate.includes("T") && !hasZone ? `${isoDate}Z` : isoDate);
+}
+
+/**
  * ISO tarih string'ini kullanıcı dostu formata çevirir.
  * Örn: "12 Nis 2026, 15:30"
  */
 export function formatDate(isoDate: string | null | undefined): string {
   if (!isoDate) return "—";
   try {
-    const date = new Date(isoDate);
+    const date = parseApiDate(isoDate);
     return date.toLocaleDateString("tr-TR", {
       day: "numeric",
       month: "short",
@@ -35,7 +44,7 @@ export function formatRelativeTime(isoDate: string | null | undefined): string {
   if (!isoDate) return "—";
   try {
     const now = Date.now();
-    const then = new Date(isoDate).getTime();
+    const then = parseApiDate(isoDate).getTime();
     const diffMs = now - then;
 
     if (diffMs < 0) return "az önce";
@@ -64,7 +73,7 @@ export function formatRelativeTime(isoDate: string | null | undefined): string {
 export function formatDateShort(isoDate: string | null | undefined): string {
   if (!isoDate) return "—";
   try {
-    const date = new Date(isoDate);
+    const date = parseApiDate(isoDate);
     return date.toLocaleDateString("tr-TR");
   } catch {
     return "—";
