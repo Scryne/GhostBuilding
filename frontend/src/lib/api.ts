@@ -205,6 +205,41 @@ api.interceptors.response.use(
 
 // ── API Helper ────────────────────────────────────────────────────────────
 
+type ValidationIssue = { loc?: unknown[]; msg?: string; type?: string };
+
+const FIELD_LABELS: Record<string, string> = {
+  email: "E-posta adresi",
+  username: "Kullanıcı adı",
+  password: "Şifre",
+  new_password: "Yeni şifre",
+  lat: "Enlem",
+  lng: "Boylam",
+  comment: "Yorum",
+};
+
+/** Sunucunun İngilizce doğrulama iletisini kullanıcıya gösterilecek Türkçe cümleye çevirir. */
+function validationMessage(issues: ValidationIssue[]): string {
+  const first = issues[0];
+  const field = String(first.loc?.[first.loc.length - 1] ?? "");
+  const label = FIELD_LABELS[field] ?? "Gönderilen bilgi";
+  if (field === "email") {
+    return "E-posta adresi geçerli değil. Gerçek bir alan adıyla (ör. ad@alanadi.com) yeniden deneyin.";
+  }
+  if (first.type?.startsWith("string_too_short")) return `${label} çok kısa.`;
+  if (first.type?.startsWith("string_too_long")) return `${label} çok uzun.`;
+  if (first.type === "missing") return `${label} gerekli.`;
+  return `${label} geçerli değil. Kontrol edip yeniden deneyin.`;
+}
+
+function statusMessage(status: number): string {
+  if (status === 401) return "Oturumunuz sona erdi. Yeniden giriş yapın.";
+  if (status === 403) return "Bu işlem için yetkiniz yok.";
+  if (status === 404) return "İstenen kayıt bulunamadı.";
+  if (status === 429) return "Çok fazla istek gönderildi. Biraz bekleyip yeniden deneyin.";
+  if (status >= 500) return "Sunucu şu an yanıt veremiyor. Biraz sonra yeniden deneyin.";
+  return "İstek tamamlanamadı. Bilgileri kontrol edip yeniden deneyin.";
+}
+
 export function getApiError(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data;
@@ -220,11 +255,15 @@ export function getApiError(error: unknown): string {
       if (Array.isArray(messages) && messages.length > 0) {
         return messages.map(String).join(" ");
       }
+      // FastAPI doğrulama hatası (422): { detail: [{ loc: ["body", "email"], msg, type }] }
+      if (Array.isArray(data.detail) && data.detail.length > 0) {
+        return validationMessage(data.detail as ValidationIssue[]);
+      }
     }
     if (!error.response) {
       return "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.";
     }
-    return error.message;
+    return statusMessage(error.response.status);
   }
   if (error instanceof Error) return error.message;
   return "Bilinmeyen bir hata oluştu.";

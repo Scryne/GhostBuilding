@@ -33,9 +33,9 @@ export default function AuthLayout({
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-ghost/[0.04] rounded-full blur-[100px] pointer-events-none" />
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-[440px] mx-4">
+      <main className="relative z-10 w-full max-w-[440px] mx-4">
         {children}
-      </div>
+      </main>
 
       {/* Override body overflow */}
       <style>{`body { overflow: auto !important; }`}</style>
