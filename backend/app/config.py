@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     STORAGE_ROOT: str = "data"
 
     # RATE LIMITING Configuration
+    # Sınır sınıfları (eşleşme: app/middleware/rate_limiter.py RATE_LIMIT_RULES):
+    #   okuma  — GET/HEAD: harita açılışı tek başına 6-8 istek atıyor, 60/dk hızlı gezinmeyi kesiyordu
+    #   yazma  — kalan her yöntem (oy, yorum, profil): sıkı
+    #   kimlik / tarama / e-posta — kendi dar sınırları
+    RATE_LIMIT_READ_PER_MINUTE: int = 240
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_SCAN_PER_HOUR: int = 10
     RATE_LIMIT_LOGIN_PER_MINUTE: int = 5

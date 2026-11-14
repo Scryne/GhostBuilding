@@ -47,9 +47,13 @@ class RateLimitRule:
     key_prefix: str         # Redis key prefix'i
 
 
-# Endpoint grubu → kural eşleşmesi (en spesifik önce)
+# Okuma sınıfına giren yöntemler (kural tablosunda yöntem yerine bu sabit yazılır).
+READ_METHODS = "GET,HEAD"
+
+# Endpoint grubu → kural eşleşmesi (en spesifik önce). Sınır sınıflarının tek tanımı burası;
+# sayılar app/config.py'de.
 RATE_LIMIT_RULES: list[tuple[str, str, RateLimitRule]] = [
-    # (path_prefix, http_method_or_"*", RateLimitRule)
+    # (path_prefix, "POST" | "GET,HEAD" | "*", RateLimitRule)
     (
         "/api/v1/anomalies/scan",
         "POST",
@@ -63,9 +67,18 @@ RATE_LIMIT_RULES: list[tuple[str, str, RateLimitRule]] = [
         "/api/v1/auth/login",
         "POST",
         RateLimitRule(
-            max_requests=5,
+            max_requests=settings.RATE_LIMIT_LOGIN_PER_MINUTE,
             window_seconds=60,
             key_prefix="rl:login",
+        ),
+    ),
+    (
+        "/api/v1/auth/register",
+        "POST",
+        RateLimitRule(
+            max_requests=settings.RATE_LIMIT_EMAIL_ACTIONS_PER_HOUR,
+            window_seconds=3600,
+            key_prefix="rl:register",
         ),
     ),
     # E-posta tetikleyen uçlar: kötüye kullanımda üçüncü kişilerin gelen kutusu dolar
@@ -97,6 +110,17 @@ RATE_LIMIT_RULES: list[tuple[str, str, RateLimitRule]] = [
             key_prefix="rl:reset",
         ),
     ),
+    # Okuma sınıfı: harita, bulgu listesi/detayı, istatistik, karo vekili. Gezinmeyi kesmesin.
+    (
+        "/api/v1/",
+        READ_METHODS,
+        RateLimitRule(
+            max_requests=settings.RATE_LIMIT_READ_PER_MINUTE,
+            window_seconds=60,
+            key_prefix="rl:read",
+        ),
+    ),
+    # Yazma sınıfı: yukarıdaki dar kurallara takılmayan her yazma isteği (oy, yorum, profil…).
     (
         "/api/v1/",
         "*",
@@ -144,7 +168,7 @@ def _match_rule(path: str, method: str) -> Optional[RateLimitRule]:
     """Verilen path ve HTTP method için eşleşen en spesifik kuralı bulur."""
     for rule_path, rule_method, rule in RATE_LIMIT_RULES:
         if path.startswith(rule_path):
-            if rule_method == "*" or rule_method.upper() == method.upper():
+            if rule_method == "*" or method.upper() in rule_method.upper().split(","):
                 return rule
     return None
 

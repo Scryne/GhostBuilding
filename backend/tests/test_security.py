@@ -109,14 +109,26 @@ class TestRateLimiter:
         assert rule.key_prefix == "rl:login"
         assert rule.window_seconds == 60
 
-    def test_match_rule_general_api(self):
-        """Genel API kuralı eşleşmesi."""
+    def test_match_rule_read_class(self):
+        """Okuma (GET/HEAD) geniş sınıfa düşer: harita açılışı 6-8 istek, 60/dk gezinmeyi kesiyordu."""
+        from app.config import settings
         from app.middleware.rate_limiter import _match_rule
 
-        rule = _match_rule("/api/v1/anomalies", "GET")
-        assert rule is not None
-        assert rule.key_prefix == "rl:api"
-        assert rule.max_requests == 60
+        for method in ("GET", "HEAD"):
+            rule = _match_rule("/api/v1/anomalies", method)
+            assert rule is not None
+            assert rule.key_prefix == "rl:read"
+            assert rule.max_requests == settings.RATE_LIMIT_READ_PER_MINUTE == 240
+
+    def test_match_rule_write_class(self):
+        """Yazma (oy vb.) sıkı genel sınıfta kalır; kimlik uçları kendi dar sınırında."""
+        from app.middleware.rate_limiter import _match_rule
+
+        vote = _match_rule("/api/v1/anomalies/abc/verify", "POST")
+        assert vote is not None and vote.key_prefix == "rl:api" and vote.max_requests == 60
+        register = _match_rule("/api/v1/auth/register", "POST")
+        assert register is not None and register.key_prefix == "rl:register"
+        assert _match_rule("/api/v1/auth/login", "POST").max_requests == 5
 
     def test_match_rule_exempt_path(self):
         """Muaf yollar için kural eşleşmemesi."""
@@ -199,10 +211,10 @@ class TestRateLimiter:
         assert rule.window_seconds == 60
 
     def test_rate_limit_rules_general_limits(self):
-        """Genel API rate limit: dakikada 60."""
+        """Genel yazma sınırı: dakikada 60 (okuma 240, ayrı test)."""
         from app.middleware.rate_limiter import _match_rule
 
-        rule = _match_rule("/api/v1/anomalies/stats", "GET")
+        rule = _match_rule("/api/v1/anomalies/stats", "POST")
         assert rule.max_requests == 60
         assert rule.window_seconds == 60
 
@@ -1089,3 +1101,43 @@ async def test_hiz_siniri_429_cors_basligi_tasir(client):
     # Ön uçuş isteği hız sınırına takılmaz, CORS katmanında cevaplanır.
     assert preflight.status_code == 200
     assert preflight.headers.get("access-control-allow-origin") == origin
+
+
+class _SayacSinir:
+    """check_rate_limit yerine: kural öneki başına sayaç (Redis'in kayan penceresinin tek pencerelik taklidi)."""
+
+    def __init__(self):
+        self.sayac: dict[str, int] = {}
+
+    async def __call__(self, client_ip, rule):
+        n = self.sayac.get(rule.key_prefix, 0)
+        if n >= rule.max_requests:
+            return False, 0, rule.max_requests, 30
+        self.sayac[rule.key_prefix] = n + 1
+        return True, rule.max_requests - n - 1, rule.max_requests, 0
+
+
+@pytest.mark.asyncio
+async def test_okuma_60_istegi_asinca_429_yok(client):
+    """Okuma sınıfı: eski genel sınır (60/dk) aşılsa da gezinme kesilmez."""
+    sinir = _SayacSinir()
+    with patch("app.middleware.rate_limiter.check_rate_limit", sinir):
+        # Veritabanına inmeyen bir okuma yolu: ara katman her GET'i aynı sınıfta sayar (yanıt 404).
+        kodlar = [(await client.get("/api/v1/sinif-denemesi")).status_code for _ in range(75)]
+    assert 429 not in kodlar
+    assert set(kodlar) == {404}
+    assert sinir.sayac["rl:read"] == 75
+
+
+@pytest.mark.asyncio
+async def test_giris_ucu_eski_sinirda_429(client):
+    """Kimlik ucu sıkı kalır: dakikada 5 girişten sonra ara katman 429 döner."""
+    sinir = _SayacSinir()
+    with patch("app.middleware.rate_limiter.check_rate_limit", sinir):
+        yanitlar = [
+            await client.post("/api/v1/auth/login", json={"email": f"yok{i}@example.com", "password": "Yanlis123"})
+            for i in range(6)
+        ]
+    assert all(r.status_code != 429 for r in yanitlar[:5])
+    assert yanitlar[5].status_code == 429
+    assert yanitlar[5].json()["error"] == "rate_limit_exceeded"
