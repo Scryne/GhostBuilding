@@ -24,7 +24,10 @@
   Oturumlu ekranlar (profil, oy) 429 düzeltmesinden sonra yeniden gezilmedi.
 - **Denenmedi:** `a3` göçünün PostGIS'li Postgres'te koşusu (bu turda yerel PG'de denenmedi).
 - **Kareler:** `_portfolyo/ekranlar/GhostBuilding/2026-11/` (kapak, harita-bulgu-paneli, bulgu-kanit, yillar-icinde, kesfet-bulgular).
-- **Karar sorusu:** genel API sınırı IP başına 60/dk; harita açılışı ~6-8 istek atıyor, hızlı gezen kullanıcı sınıra değebilir.
+- **Karar kapandı (11-14, `0b3e82d`):** hız sınırı sınıflara ayrıldı: okuma (GET/HEAD) 240/dk, yazma 60/dk, giriş
+  5/dk, kayıt saatte 5; sınıflar tek yerde (`RATE_LIMIT_RULES`). Backend 298 test.
+- **Bu makinede koşulamayan (11-16):** yerel Postgres'te PostGIS yok (Docker'sız kurulum: Timescale + pgvector), bu
+  yüzden `a3` göçü ve oturumlu ekran gezisi yalnız Docker'lı yığında / CI'da sınanabilir.
 
 ## Ne çalışıyor (ölçüldü)
 
