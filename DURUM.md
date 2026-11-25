@@ -7,6 +7,24 @@
 **Tek cümle:** Üç resmî uydu kaynağını kalibre edilmiş tabana göre karşılaştıran motor uçtan uca
 çalışıyor; referans taramasında 20 tesisin 3'ü işaretlendi, 7 kontrol konumunun hiçbiri.
 
+## Yayına hazır turu (2026-11-25)
+
+**Karne:** Kod ✅ · Ürün ✅ · Ön yüz ✅ (vitrin: siniyor) · Belge ✅ · Kapı: ağaç temiz, test e-postaları kasıtlı; geçmişte
+`be27434` (11-03 `gh pr merge`) gerçek e-posta kimliği, yeniden yazma kararı Scryne'da · Dış: canlı kurulum (sunucu),
+bina dedektörü ağırlığı. Bundan sonra bulunan "v2 fikirleri"ne girer.
+
+- **Göçler PostGIS'te (açık kapandı):** CI'a `Migrations (PostGIS)` işi (`5381126`): üretim imajı `postgis/postgis:16-3.4`
+  servis konteyneri, `alembic upgrade head` → `downgrade base` → `upgrade head`. İlk koşu yeşil; a1 → a2 → a3 yukarı, geri,
+  yeniden yukarı. a3 artık her push'ta sınanıyor.
+- **Kod:** backend 298 test, ruff temiz; ön yüz typecheck 0, lint 0, build temiz. next 16.4.3 → 16.4.6 (orta açık), audit 0.
+- **Oturumlu ekran gezisi** (profil, oy) yerelde hâlâ yapılamıyor (bu makinede PostGIS'li veritabanı yok); uçları
+  backend testleri kapsıyor. Docker'lı yığında yapılır.
+
+## v2 fikirleri
+
+- Oturumlu ekranlar için e2e (Playwright) işi CI'da, PostGIS servisiyle.
+- Bina dedektörü için z16'da çalışan hazır ağırlık (bugün yok; ayrıntı aşağıda).
+
 ## Bitirme denetimi (2026-11-13)
 
 - **Kırmızı kapandı:** haftalık güvenlik denetimi (Trivy) imajdaki OS paketlerinden düşüyordu → imaj kurulurken
