@@ -42,6 +42,47 @@ jobs:
           pip install pip-audit
           pip-audit -r requirements.txt
 
+  # The migrations had never run on a PostGIS database outside Docker: tests use their own schema, and the local
+  # Postgres on the development machine has no PostGIS (2026-11-25). Each push now applies every migration to the
+  # same image production uses, takes them all back and applies them again.
+  migrations:
+    name: Migrations (PostGIS)
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ghostbuilding
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ghostbuilding"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/ghostbuilding
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Upgrade to head
+        run: alembic upgrade head
+
+      - name: Every migration reverses
+        run: alembic downgrade base && alembic upgrade head
+
   frontend:
     name: Frontend (Node 22)
     runs-on: ubuntu-latest
